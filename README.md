@@ -7,7 +7,7 @@ This is a plugin device for the [lumberjack gem](https://github.com/bdurand/lumb
 
 Using mocks and stubs on a logger to test that it receives messages can make for a brittle test suite since there can a wide variety of code writing messages to logs and your test suite may have a higher log level turned on causing it skip messages at a lower level.
 
-For instance, this rspec code can break is code anywhere else in the system writes an info log message:
+For instance, this rspec code can break if any of the code called by the `do_something` writes a different info log message:
 
 ```ruby
 do_something
@@ -18,9 +18,9 @@ It will also break if the test suite logger has the log level set to `warn` or h
 
 ## Usage
 
-You can override a logger's device inside a block with the `Lumberjack::CaptureDevice.capture` method. This method will yield the capturing log device which has an `include?` method you can use to make assertions about what was written to the log inside the block.
+You can call the `Lumberjack::CaptureDevice.capture` method to override a logger so that it will capture log entries within a block to an in memory buffer. This method will yield the capturing log device as well as return it as the result of the method. The log level will also be temporarily set to debug within the block, so you can capture all log messages without having to change the log level for the entire test suite.
 
-This would be the equivalent code to the above rspec test:
+You can use the `include?` method on the log device to determine if specific log entries were made. This would be the equivalent code to the above rspec test, but without the brittleness of mocking method calls:
 
 ```ruby
 Lumberjack::CaptureDevice.capture(Rails.logger) do |logs|
@@ -29,11 +29,11 @@ Lumberjack::CaptureDevice.capture(Rails.logger) do |logs|
 end
 ```
 
-The `capture` method also returns the device so you can also write that same test as:
+You can also write that same test as:
 
 ```ruby
 logs = Lumberjack::CaptureDevice.capture(Rails.logger) { do_something }
 expect(logs).to include(level: :info, message: "Something happened")
 ```
 
-The
+You can also use the `Lumberjack::CaptureDevice#extract` method with the same arguments as used by `include?` to grab all lines that match the filters. And finally, you can access all the log entries with `Lumberjack::CaptureDevice#buffer`.
