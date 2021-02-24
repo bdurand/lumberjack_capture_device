@@ -1,5 +1,5 @@
 [![Continuous Integration](https://github.com/bdurand/lumberjack_capture_device/actions/workflows/continuous_integration.yml/badge.svg)](https://github.com/bdurand/lumberjack_capture_device/actions/workflows/continuous_integration.yml)
-[![Maintainability](https://api.codeclimate.com/v1/badges/a0abc03721fff9b0cde1/maintainability)](https://codeclimate.com/github/bdurand/lumberjack/maintainability)
+[![Maintainability](https://api.codeclimate.com/v1/badges/94c91086b33d05218c36/maintainability)](https://codeclimate.com/github/bdurand/lumberjack_capture_device/maintainability)
 [![Ruby Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://github.com/testdouble/standard)
 
 # Lumberjack Capture Device
