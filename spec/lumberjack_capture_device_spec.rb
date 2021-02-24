@@ -60,6 +60,7 @@ describe Lumberjack::CaptureDevice do
       expect(logs).to include(tags: {"baz" => {"one" => Integer}})
       expect(logs).to_not include(tags: {baz: {one: "one"}})
       expect(logs).to include(tags: {baz: {one: 1, two: [2, 22]}})
+      expect(logs).to include(tags: {baz: {three: anything}})
     end
 
     it "should match combinations" do

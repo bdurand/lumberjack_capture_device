@@ -36,4 +36,20 @@ logs = Lumberjack::CaptureDevice.capture(Rails.logger) { do_something }
 expect(logs).to include(level: :info, message: "Something happened")
 ```
 
+For MiniTest, you could assert:
+
+```ruby
+logs = Lumberjack::CaptureDevice.capture(Rails.logger) { do_something }
+assert(logs.include?(level: :info, message: "Something happened"))
+```
+
+
+You can filter the logs on level, message, and tags. The level option can take either a label (i.e. `:warn`) or a constant (i.e. `Logger::WARN`). The message filter can be either an exact string, or a regular expression or any matcher supported by your test library. The tags argument can match tags with a Hash mapping tag names to the matcher.
+
+```ruby
+expect(logs).to include(level: :info, message: /something/i)
+expect(logs).to include(level: Logger::INFO, tags: {foo: "bar"})
+expect(logs).to include(tags: {foo: anything, count: {one: 1}})
+```
+
 You can also use the `Lumberjack::CaptureDevice#extract` method with the same arguments as used by `include?` to grab all lines that match the filters. And finally, you can access all the log entries with `Lumberjack::CaptureDevice#buffer`.
