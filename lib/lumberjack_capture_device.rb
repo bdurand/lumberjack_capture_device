@@ -64,8 +64,8 @@ module Lumberjack
     # ```
     # logs.include(level: :warn, message: /something happened/, tags: {duration: instance_of(Float)})
     # ```
-    def include?(message: nil, level: nil, tags: nil)
-      !extract(message: message, level: level, tags: tags, limit: 1).empty?
+    def include?(args)
+      !extract(**args.merge(limit: 1)).empty?
     end
 
     # Return all the captured entries that match the specified filters. These filters are
