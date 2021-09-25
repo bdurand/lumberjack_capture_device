@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        - ruby: ruby
+        - ruby: "ruby"
           standardrb: true
         - ruby: "3.0"
         - ruby: "2.7"
