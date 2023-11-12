@@ -54,3 +54,31 @@ expect(logs).to include(tags: {foo: anything, count: {one: 1}})
 ```
 
 You can also use the `Lumberjack::CaptureDevice#extract` method with the same arguments as used by `include?` to grab all lines that match the filters. And finally, you can access all the log entries with `Lumberjack::CaptureDevice#buffer`.
+
+## Installation
+
+Add this line to your application's Gemfile:
+
+```ruby
+gem 'lumberjack_capture_device'
+```
+
+And then execute:
+```bash
+$ bundle
+```
+
+Or install it yourself as:
+```bash
+$ gem install lumberjack_capture_device
+```
+
+## Contributing
+
+Open a pull request on GitHub.
+
+Please use the [standardrb](https://github.com/testdouble/standard) syntax and lint your code with `standardrb --fix` before submitting.
+
+## License
+
+The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
