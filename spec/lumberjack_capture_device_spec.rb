@@ -60,7 +60,44 @@ describe Lumberjack::CaptureDevice do
       expect(logs).to include(tags: {"baz" => {"one" => Integer}})
       expect(logs).to_not include(tags: {baz: {one: "one"}})
       expect(logs).to include(tags: {baz: {one: 1, two: [2, 22]}})
-      expect(logs).to include(tags: {baz: {three: anything}})
+      expect(logs).to include(tags: {baz: {three: nil}})
+    end
+
+    it "should match nil if the tag is not present" do
+      logs = Lumberjack::CaptureDevice.capture(logger) {
+        logger.info("foobar", foo: "bar", fip: [])
+      }
+      expect(logs).to_not include(tags: {foo: nil})
+      expect(logs).to include(tags: {baz: nil})
+      expect(logs).to include(tags: {fip: nil})
+    end
+
+    it "should match empty array if the tag is not present" do
+      logs = Lumberjack::CaptureDevice.capture(logger) {
+        logger.info("foobar", foo: "bar", fip: [])
+      }
+      expect(logs).to_not include(tags: {foo: []})
+      expect(logs).to include(tags: {baz: []})
+      expect(logs).to include(tags: {fip: []})
+    end
+
+    it "should expand dot notation on tag filters" do
+      logs = Lumberjack::CaptureDevice.capture(logger) {
+        logger.info("foobar", foo: {bar: {baz: "boo"}})
+      }
+      expect(logs).to include(tags: {"foo.bar.baz" => "boo"})
+      expect(logs).to_not include(tags: {"foo.bar.baz" => "other"})
+      expect(logs).to include(tags: {"foo.bar.baz" => /bo/})
+      expect(logs).to include(tags: {"foo.bar" => {"baz" => "boo"}})
+      expect(logs).to include(tags: {"foo.bar.baz" => String})
+      expect(logs).to_not include(tags: {"foo.bar.baz" => Integer})
+    end
+
+    it "should merge dot notation tags" do
+      logs = Lumberjack::CaptureDevice.capture(logger) {
+        logger.info("foobar", foo: {bar: {baz: "boo"}}, "foo.bar": {bip: "bop"}, "foo.bar.qux": "kook")
+      }
+      expect(logs).to include(tags: {"foo.bar.baz" => "boo"})
     end
 
     it "should match combinations" do
