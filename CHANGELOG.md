@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Support for nested tag structures in log entries. Now comparisons on tags will use dot notation to dereference nested tags. So "foo.bar" will match a tag with the structure `{foo: {bar: "value"}}`. This provides compatibility with an internal change in Lumberjack 1.3.
+- Support for matching tag structures in log entries regardless of if they are specified with dot notation or nested tags. So "foo.bar" will match a tag with the structure `{foo: {bar: "value"}}` or `{"foo.bar" => value}`.
 
 ## 1.0.1
 
