@@ -28,6 +28,7 @@ jobs:
           - ruby: "ruby"
             standardrb: true
           - ruby: "3.0"
+          - ruby: "2.7"
           - ruby: "2.5"
     steps:
     - uses: actions/checkout@v4
