@@ -100,6 +100,15 @@ describe Lumberjack::CaptureDevice do
       expect(logs).to include(tags: {"foo.bar.baz" => "boo"})
     end
 
+    it "should match arrays of hashes" do
+      logs = Lumberjack::CaptureDevice.capture(logger) {
+        logger.info("foobar", foo: [{bar: "baz"}, {bip: "bop"}])
+      }
+      expect(logs).to include(tags: {foo: [{bar: "baz"}, {bip: "bop"}]})
+      expect(logs).to include(tags: {foo: [{"bar" => "baz"}, {"bip" => "bop"}]})
+      expect(logs).to include(tags: {foo: array_including({"bar" => "baz"})})
+    end
+
     it "should match combinations" do
       logs = Lumberjack::CaptureDevice.capture(logger) {
         logger.info("foobar", foo: "bar", baz: {one: 1, two: [2, 22]})
