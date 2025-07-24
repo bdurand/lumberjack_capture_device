@@ -140,6 +140,7 @@ describe Lumberjack::CaptureDevice do
     it "should return a string representation of the captured entries" do
       logs = Lumberjack::CaptureDevice.capture(logger) {
         logger.info("foobar", foo: "bar")
+        logger.progname = "TestProgname"
         logger.warn("something happened", foo: {bar: "baz", bip: "bop"}, duration: 1.23)
       }
       expect(logs.inspect).to include "<#Lumberjack::CaptureDevice 2 entries captured:"

@@ -187,7 +187,7 @@ module Lumberjack
 
     def formatted_entry(entry)
       timestamp = entry.time.strftime("%Y-%m-%d %H:%M:%S")
-      formatted = "#{timestamp} #{entry.severity_label}: #{entry.message}"
+      formatted = +"#{timestamp} #{entry.severity_label}: #{entry.message}"
       formatted << "\n    progname: #{entry.progname}" if entry.progname.to_s != ""
       formatted << "\n    pid: #{entry.pid}" if entry.pid
       if entry.tags && !entry.tags.empty?
