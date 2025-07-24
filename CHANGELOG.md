@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Handle tag array comparison when an array contains hashes to consistently convert the hash keys to strings. Otherwise array hashes were being treated differently that other tag structures.
 
+### Changed
+
+- Improved the `inspect` method to provide a clearer representation of captured log entries to make debugging tests easier.
+
 ## 1.1.0
 
 ### Added

@@ -118,6 +118,15 @@ module Lumberjack
       matches
     end
 
+    def inspect
+      message = "<##{self.class.name} #{@buffer.size} #{(@buffer.size == 1) ? "entry" : "entries"} captured:"
+      @buffer.each do |entry|
+        message << "\n  #{formatted_entry(entry)}"
+      end
+      message << "\n>"
+      message
+    end
+
     private
 
     def matched?(entry, message_filter, level_filter, tags_filter)
@@ -174,6 +183,19 @@ module Lumberjack
       else
         hash
       end
+    end
+
+    def formatted_entry(entry)
+      timestamp = entry.time.strftime("%Y-%m-%d %H:%M:%S")
+      formatted = "#{timestamp} #{entry.severity_label}: #{entry.message}"
+      formatted << "\n    progname: #{entry.progname}" if entry.progname.to_s != ""
+      formatted << "\n    pid: #{entry.pid}" if entry.pid
+      if entry.tags && !entry.tags.empty?
+        Lumberjack::Utils.flatten_tags(entry.tags).to_a.sort_by(&:first).each do |name, value|
+          formatted << "\n    #{name}: #{value}"
+        end
+      end
+      formatted
     end
   end
 end
