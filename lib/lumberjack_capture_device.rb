@@ -119,7 +119,7 @@ module Lumberjack
     end
 
     def inspect
-      message = "<##{self.class.name} #{@buffer.size} #{(@buffer.size == 1) ? "entry" : "entries"} captured:"
+      message = +"<##{self.class.name} #{@buffer.size} #{(@buffer.size == 1) ? "entry" : "entries"} captured:"
       @buffer.each do |entry|
         message << "\n  #{formatted_entry(entry)}"
       end
