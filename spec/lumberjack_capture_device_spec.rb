@@ -135,4 +135,20 @@ describe Lumberjack::CaptureDevice do
       expect(logs.extract(tags: {foo: "bar"}).collect(&:message)).to eq ["foobar", "baxbar"]
     end
   end
+
+  describe "#inspect" do
+    it "should return a string representation of the captured entries" do
+      logs = Lumberjack::CaptureDevice.capture(logger) {
+        logger.info("foobar", foo: "bar")
+        logger.progname = "TestProgname"
+        logger.warn("something happened", foo: {bar: "baz", bip: "bop"}, duration: 1.23)
+      }
+      expect(logs.inspect).to include "<#Lumberjack::CaptureDevice 2 entries captured:"
+      expect(logs.inspect).to include "INFO: foobar"
+      expect(logs.inspect).to include "WARN: something happened"
+      expect(logs.inspect).to include "foo: bar"
+      expect(logs.inspect).to include "duration: 1.23"
+      expect(logs.inspect).to include "foo.bar: baz"
+    end
+  end
 end
