@@ -124,8 +124,10 @@ module Lumberjack
       return false unless match?(entry.message, message_filter)
       return false unless match?(entry.severity, level_filter)
 
-      tags_filter = Lumberjack::Utils.expand_tags(tags_filter) if tags_filter.is_a?(Hash)
-      tags = Lumberjack::Utils.expand_tags(entry.tags)
+      if tags_filter.is_a?(Hash)
+        tags_filter = deep_stringify_keys(Lumberjack::Utils.expand_tags(tags_filter))
+      end
+      tags = deep_stringify_keys(Lumberjack::Utils.expand_tags(entry.tags))
 
       return false unless match_tags?(tags, tags_filter)
 
@@ -150,13 +152,27 @@ module Lumberjack
           else
             false
           end
-        elsif value_filter.nil? || (value_filter.is_a?(Array) && value_filter.empty?)
+        elsif value_filter.nil? || (value_filter.is_a?(Enumerable) && value_filter.empty?)
           tag_values.nil? || (tag_values.is_a?(Array) && tag_values.empty?)
         elsif tags.include?(name)
           match?(tag_values, value_filter)
         else
           false
         end
+      end
+    end
+
+    def deep_stringify_keys(hash)
+      if hash.is_a?(Hash)
+        hash.each_with_object({}) do |(key, value), result|
+          new_key = key.to_s
+          new_value = deep_stringify_keys(value)
+          result[new_key] = new_value
+        end
+      elsif hash.is_a?(Enumerable)
+        hash.collect { |item| deep_stringify_keys(item) }
+      else
+        hash
       end
     end
   end
