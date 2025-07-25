@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support for matching tag structures in log entries regardless of if they are specified with dot notation or nested tags. So "foo.bar" will match a tag with the structure `{foo: {bar: "value"}}` or `{"foo.bar" => value}`.
 
+### Changed
+
+- Specifying a tag to match on nil will now match log entries missing the tag rather than matching any value for that tag.
+
 ## 1.0.1
 
 ### Added
