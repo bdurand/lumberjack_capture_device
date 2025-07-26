@@ -44,7 +44,6 @@ logs = Lumberjack::CaptureDevice.capture(Rails.logger) { do_something }
 assert(logs.include?(level: :info, message: "Something happened"))
 ```
 
-
 You can filter the logs on level, message, and tags.
 
 - The level option can take either a label (i.e. `:warn`) or a constant (i.e. `Logger::WARN`).
@@ -59,6 +58,25 @@ expect(logs).to include(tags: {foo: anything, "count.one" => 1})
 ```
 
 You can also use the `Lumberjack::CaptureDevice#extract` method with the same arguments as used by `include?` to extract all log entries that match the filters. You can get all of the log entries with `Lumberjack::CaptureDevice#buffer`.
+
+### RSpec Support
+
+You can include some RSpec syntactic sugar by requiring the rspec file in your test helper.
+
+```ruby
+require "lumberjack/capture_device/rspec"
+```
+
+This will give you a `capture_logger` method and `include_log_entry` matcher. The `include_log_entry` matcher provides a bit cleaner output which can make debugging failing tests a bit easier.
+
+```ruby
+describe MyClass do
+  it "logs information" do
+    logs = capture_logger { MyClass.do_something }
+    expect(logs).to include_log_entry(message: "Something")
+  end
+end
+```
 
 ## Installation
 
