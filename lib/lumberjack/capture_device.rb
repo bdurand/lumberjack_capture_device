@@ -259,4 +259,4 @@ module Lumberjack
 end
 
 require_relative "capture_device/entry_score"
-require_relative "capture_device/have_logged_matcher"
+require_relative "capture_device/include_log_entry_matcher"

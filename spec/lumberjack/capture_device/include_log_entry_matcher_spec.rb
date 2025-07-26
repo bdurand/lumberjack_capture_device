@@ -3,7 +3,7 @@
 require_relative "../../spec_helper"
 require_relative "../../../lib/lumberjack/capture_device/rspec"
 
-RSpec.describe Lumberjack::CaptureDevice::HaveLoggedMatcher do
+RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
   let(:logger) { Lumberjack::Logger.new(StringIO.new, level: :debug) }
   let(:capture_device) do
     device = Lumberjack::CaptureDevice.new
@@ -28,19 +28,6 @@ RSpec.describe Lumberjack::CaptureDevice::HaveLoggedMatcher do
       it "returns false when the expected entry does not exist" do
         non_matching_matcher = described_class.new(level: :info, message: "non-existent message")
         expect(non_matching_matcher.matches?(capture_device)).to be false
-      end
-    end
-
-    context "when given a Proc that returns a CaptureDevice" do
-      it "calls the proc and matches against the result" do
-        proc_that_returns_device = -> { capture_device }
-        expect(matcher.matches?(proc_that_returns_device)).to be true
-      end
-
-      it "returns false when proc returns non-matching device" do
-        empty_device = Lumberjack::CaptureDevice.new
-        proc_that_returns_empty = -> { empty_device }
-        expect(matcher.matches?(proc_that_returns_empty)).to be false
       end
     end
 
@@ -155,12 +142,6 @@ RSpec.describe Lumberjack::CaptureDevice::HaveLoggedMatcher do
     end
   end
 
-  describe "#supports_block_expectations?" do
-    it "returns true" do
-      expect(matcher.supports_block_expectations?).to be true
-    end
-  end
-
   describe "private methods" do
     describe "#valid_captured_logger?" do
       it "returns true for CaptureDevice objects" do
@@ -216,22 +197,14 @@ RSpec.describe Lumberjack::CaptureDevice::HaveLoggedMatcher do
   end
 
   # Integration tests with the RSpec helper method
-  describe "integration with have_logged helper" do
+  describe "integration with include_log_entry helper" do
     it "works with the RSpec helper method" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("integration test message")
       end
 
-      expect(logs).to have_logged(level: :info, message: "integration test message")
-      expect(logs).not_to have_logged(level: :error, message: "integration test message")
-    end
-
-    it "works with block expectations" do
-      expect {
-        Lumberjack::CaptureDevice.capture(logger) do
-          logger.warn("block expectation test")
-        end
-      }.to have_logged(level: :warn, message: "block expectation test")
+      expect(logs).to include_log_entry(level: :info, message: "integration test message")
+      expect(logs).not_to include_log_entry(level: :error, message: "integration test message")
     end
 
     it "provides clear failure messages in real usage" do
@@ -240,7 +213,7 @@ RSpec.describe Lumberjack::CaptureDevice::HaveLoggedMatcher do
       end
 
       expect {
-        expect(logs).to have_logged(level: :info, message: "expected message")
+        expect(logs).to include_log_entry(level: :info, message: "expected message")
       }.to raise_error(RSpec::Expectations::ExpectationNotMetError, /expected logs did not include expected entry/)
     end
   end

@@ -1,19 +1,14 @@
 # frozen_string_literal: true
 
 # RSpec matcher for checking captured logs for specific entries.
-class Lumberjack::CaptureDevice::HaveLoggedMatcher
+class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   def initialize(expected_hash)
     @expected_hash = expected_hash.transform_keys(&:to_sym)
     @captured_logger = nil
   end
 
   def matches?(actual)
-    @captured_logger = if actual.is_a?(Proc)
-      actual.call
-    else
-      actual
-    end
-
+    @captured_logger = actual
     return false unless valid_captured_logger?
 
     @captured_logger.include?(@expected_hash)
@@ -37,10 +32,6 @@ class Lumberjack::CaptureDevice::HaveLoggedMatcher
 
   def description
     "have logged entry with #{expectation_description(@expected_hash)}"
-  end
-
-  def supports_block_expectations?
-    true
   end
 
   private
