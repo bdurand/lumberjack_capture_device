@@ -51,9 +51,9 @@ module Lumberjack
       def formatted_expectation(expectation)
         expectation = expectation.transform_keys(&:to_s).compact
         message = []
-        message << "level: #{expectation["level"].inspect}"
-        message << "message: #{expectation["message"].inspect}"
-        message << "progname: #{expectation["progname"].inspect}"
+        message << "level: #{expectation["level"].inspect}" if expectation.include?("level")
+        message << "message: #{expectation["message"].inspect}" if expectation.include?("message")
+        message << "progname: #{expectation["progname"].inspect}" if expectation.include?("progname")
         if expectation["tags"].is_a?(Hash) && !expectation["tags"].empty?
           tags = Lumberjack::Utils.flatten_tags(expectation["tags"])
           prefix = "tags: "
