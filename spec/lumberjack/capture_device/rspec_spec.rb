@@ -79,10 +79,9 @@ RSpec.describe "rspec matchers" do
         expect {
           expect(logs).to include_log_entry(level: :info, message: "expected message")
         }.to raise_error(RSpec::Expectations::ExpectationNotMetError) do |error|
-          expect(error.message).to include("expected logs did not include expected entry")
-          expect(error.message).to include("Expected entry:")
+          expect(error.message).to include("expected logs to include entry")
           expect(error.message).to include("expected message")
-          expect(error.message).to include("Captured logs:")
+          expect(error.message).to include("Captured 1 log entry")
           expect(error.message).to include("actual message")
         end
       end

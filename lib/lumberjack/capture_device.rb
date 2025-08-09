@@ -8,8 +8,9 @@ module Lumberjack
   class CaptureDevice < Lumberjack::Device
     VERSION = File.read(File.join(__dir__, "..", "..", "VERSION"))
 
-    attr_reader :buffer
+    include Enumerable
 
+    attr_reader :buffer
     class << self
       # Capture the entries written by the logger within a block. Within the block all log
       # entries will be written to a CaptureDevice rather than to the normal output for
@@ -48,18 +49,51 @@ module Lumberjack
         device
       end
 
-      def formatted_expectation(expectation)
+      # Helper method to format a log entry for display.
+      #
+      # @param entry [Lumberjack::LogEntry] The log entry to format.
+      # @param indent [Integer] The indentation to prefix on every line.
+      # @return [String] The formatted log entry.
+      def formatted_entry(entry, indent: 0)
+        indent_str = " " * indent
+        timestamp = entry.time.strftime("%Y-%m-%d %H:%M:%S")
+        formatted = +"#{indent_str}#{timestamp} #{entry.severity_label}: #{entry.message}"
+        formatted << "\n#{indent_str}  progname: #{entry.progname}" if entry.progname.to_s != ""
+        if entry.tags && !entry.tags.empty?
+          Lumberjack::Utils.flatten_tags(entry.tags).to_a.sort_by(&:first).each do |name, value|
+            formatted << "\n#{indent_str}  #{name}: #{value}"
+          end
+        end
+        formatted
+      end
+
+      # Format a log entry or expectation hash into a more human readable format.
+      #
+      # @param expectation [Hash, Lumberjack::LogEntry] The expectation or log entry to format.
+      # @return [String] A formatted string representation of the expectation or log entry.
+      def formatted_expectation(expectation, indent: 0)
+        if expectation.is_a?(Lumberjack::LogEntry)
+          expectation = {
+            "level" => expectation.severity_label,
+            "message" => expectation.message,
+            "progname" => expectation.progname,
+            "tags" => expectation.tags
+          }
+        end
+
         expectation = expectation.transform_keys(&:to_s).compact
+
         message = []
-        message << "level: #{expectation["level"].inspect}" if expectation.include?("level")
-        message << "message: #{expectation["message"].inspect}" if expectation.include?("message")
-        message << "progname: #{expectation["progname"].inspect}" if expectation.include?("progname")
+        indent_str = " " * indent
+        message << "#{indent_str}level: #{expectation["level"].inspect}" if expectation.include?("level")
+        message << "#{indent_str}message: #{expectation["message"].inspect}" if expectation.include?("message")
+        message << "#{indent_str}progname: #{expectation["progname"].inspect}" if expectation.include?("progname")
         if expectation["tags"].is_a?(Hash) && !expectation["tags"].empty?
           tags = Lumberjack::Utils.flatten_tags(expectation["tags"])
           prefix = "tags: "
-          tags.each do |name, value|
+          tags.sort_by(&:first).each do |name, value|
             message << "#{prefix} #{name}: #{value.inspect}"
-            prefix = "      "
+            prefix = "#{indent_str}      "
           end
         end
         message.join("\n")
@@ -107,7 +141,7 @@ module Lumberjack
     # @option args [String] :progname The program name to match against the log entries.
     # @return [Boolean] True if any entries match the specified filters, false otherwise.
     def include?(args)
-      !extract(**args.merge(limit: 1)).empty?
+      !!match(**args)
     end
 
     # Return all the captured entries that match the specified filters. These filters are
@@ -120,8 +154,8 @@ module Lumberjack
     #   `{foo: {bar: "value"}}`).
     # @param limit [Integer, nil] The maximum number of entries to return. If nil, all matching entries
     #   will be returned.
-    # @return [Array<Lumberjack::Entry>] An array of log entries that match the specified filters.
-    def extract(message: nil, level: nil, tags: nil, limit: nil, progname: nil)
+    # @return [Array<Lumberjack::LogEntry>] An array of log entries that match the specified filters.
+    def extract(message: nil, level: nil, tags: nil, progname: nil, limit: nil)
       matches = []
 
       if level
@@ -139,6 +173,17 @@ module Lumberjack
       matches
     end
 
+    # Return the first entry that matches the specified filters.
+    #
+    # @param message [String, Regexp, nil] The message to match against the log entries.
+    # @param level [String, Symbol, Integer, nil] The log level to match against the log entries.
+    # @param tags [Hash, nil] A hash of tag names to values to match against the log entries.
+    # @param progname [String, nil] The program name to match against the log entries.
+    # @return [Lumberjack::LogEntry, nil] The log entry that most closely matches the filters, or nil if no entry meets minimum criteria.
+    def match(message: nil, level: nil, tags: nil, progname: nil)
+      extract(message: message, level: level, tags: tags, progname: progname, limit: 1).first
+    end
+
     # Return the log entry that most closely matches the specified filters. This method
     # uses fuzzy matching logic to find the best match when no exact match exists.
     # The matching score is calculated based on how many criteria are met and how closely
@@ -148,9 +193,12 @@ module Lumberjack
     # @param level [String, Symbol, Integer, nil] The log level to match against the log entries.
     # @param tags [Hash, nil] A hash of tag names to values to match against the log entries.
     # @param progname [String, nil] The program name to match against the log entries.
-    # @return [Lumberjack::Entry, nil] The log entry that most closely matches the filters, or nil if no entry meets minimum criteria.
+    # @return [Lumberjack::LogEntry, nil] The log entry that most closely matches the filters, or nil if no entry meets minimum criteria.
     def closest_match(message: nil, level: nil, tags: nil, progname: nil)
       return nil if @buffer.empty?
+
+      exact_match = match(message: message, level: level, tags: tags, progname: progname)
+      return exact_match if exact_match
 
       # Normalize level filter
       if level
@@ -174,7 +222,7 @@ module Lumberjack
     def inspect
       message = +"<##{self.class.name} #{@buffer.size} #{(@buffer.size == 1) ? "entry" : "entries"} captured:"
       @buffer.each do |entry|
-        message << "\n  #{formatted_entry(entry)}"
+        message << "\n  #{Lumberjack::CaptureDevice.formatted_entry(entry)}"
       end
       message << "\n>"
       message
@@ -182,6 +230,16 @@ module Lumberjack
 
     def to_s
       "<##{self.class.name} #{@buffer.size} #{(@buffer.size == 1) ? "entry" : "entries"} captured>"
+    end
+
+    def length
+      @buffer.length
+    end
+
+    alias_method :size, :length
+
+    def each(&block)
+      @buffer.each(&block)
     end
 
     private
@@ -242,18 +300,6 @@ module Lumberjack
       else
         hash
       end
-    end
-
-    def formatted_entry(entry)
-      timestamp = entry.time.strftime("%Y-%m-%d %H:%M:%S")
-      formatted = +"#{timestamp} #{entry.severity_label}: #{entry.message}"
-      formatted << "\n    progname: #{entry.progname}" if entry.progname.to_s != ""
-      if entry.tags && !entry.tags.empty?
-        Lumberjack::Utils.flatten_tags(entry.tags).to_a.sort_by(&:first).each do |name, value|
-          formatted << "\n    #{name}: #{value}"
-        end
-      end
-      formatted
     end
   end
 end
