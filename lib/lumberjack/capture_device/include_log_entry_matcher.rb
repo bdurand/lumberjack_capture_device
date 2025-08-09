@@ -45,7 +45,7 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   end
 
   def formatted_failure_message(captured_logger, expected_hash)
-    message = "expected logs to include entry:\n" \
+    message = +"expected logs to include entry:\n" \
       "#{Lumberjack::CaptureDevice.formatted_expectation(expected_hash, indent: 2)}\n\n" \
       "Captured #{captured_logger.length} log #{(captured_logger.length == 1) ? "entry" : "entries"}"
 
