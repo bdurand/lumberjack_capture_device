@@ -48,9 +48,8 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
 
         message = non_matching_matcher.failure_message
 
-        expect(message).to include("expected logs did not include expected entry")
-        expect(message).to include("Expected entry:")
-        expect(message).to include("Captured logs:")
+        expect(message).to include("expected logs to include entry:")
+        expect(message).to include("Captured 3 log entries")
         expect(message).to include("non-existent message")
       end
 
@@ -61,12 +60,15 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
         logger.info("different message")
 
         # Mock the closest_match method to return an entry-like object
-        mock_entry = double("LogEntry",
-          severity_label: "INFO",
-          message: "similar message",
-          progname: nil,
-          tags: {})
-        allow(empty_device).to receive(:closest_match).and_return(mock_entry)
+        entry = Lumberjack::LogEntry.new(
+          Time.now,
+          Logger::INFO,
+          "similar message",
+          nil,
+          nil,
+          nil
+        )
+        allow(empty_device).to receive(:closest_match).and_return(entry)
 
         non_matching_matcher = described_class.new(level: :info, message: "non-existent message")
         non_matching_matcher.matches?(empty_device)
@@ -95,9 +97,8 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
 
         message = matcher.failure_message_when_negated
 
-        expect(message).to include("expected logs did not include expected entry")
-        expect(message).to include("Expected entry:")
-        expect(message).to include("Captured logs:")
+        expect(message).to include("expected logs not to include entry:")
+        expect(message).to include("Found entry:")
       end
     end
 
@@ -214,7 +215,7 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
 
       expect {
         expect(logs).to include_log_entry(level: :info, message: "expected message")
-      }.to raise_error(RSpec::Expectations::ExpectationNotMetError, /expected logs did not include expected entry/)
+      }.to raise_error(RSpec::Expectations::ExpectationNotMetError, /expected logs to include entry/)
     end
   end
 end

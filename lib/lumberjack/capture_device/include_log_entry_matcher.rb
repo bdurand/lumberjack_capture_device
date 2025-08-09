@@ -16,7 +16,7 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
 
   def failure_message
     if valid_captured_logger?
-      formatted_failure_message(@captured_logger, @expected_hash, negated: false)
+      formatted_failure_message(@captured_logger, @expected_hash)
     else
       wrong_object_type_message(@captured_logger)
     end
@@ -24,7 +24,7 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
 
   def failure_message_when_negated
     if valid_captured_logger?
-      formatted_failure_message(@captured_logger, @expected_hash, negated: true)
+      formatted_negated_failure_message(@captured_logger, @expected_hash)
     else
       wrong_object_type_message(@captured_logger)
     end
@@ -44,23 +44,35 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
     "Expected a Lumberjack::CaptureDevice object, but received a #{captured_logger.class}."
   end
 
-  def formatted_failure_message(captured_logger, expected_hash, negated:)
+  def formatted_failure_message(captured_logger, expected_hash)
+    message = "expected logs to include entry:\n" \
+      "#{Lumberjack::CaptureDevice.formatted_expectation(expected_hash, indent: 2)}\n\n" \
+      "Captured #{captured_logger.length} log #{(captured_logger.length == 1) ? "entry" : "entries"}"
+
+    if captured_logger.length > 0
+      message << "\n----------------------\n"
+      captured_logger.each do |entry|
+        message << "#{Lumberjack::CaptureDevice.formatted_entry(entry)}\n"
+      end
+    end
+
     closest_match = captured_logger.closest_match(**expected_hash)
-    message = "expected logs did not include expected entry.\n\n" \
-      "Expected entry:\n-----------\n#{Lumberjack::CaptureDevice.formatted_expectation(expected_hash)}\n\n" \
-      "Captured logs:\n-----------\n#{captured_logger.inspect}"
-
     if closest_match
-      # Convert the entry to a hash format for formatted_expectation
-      closest_match_hash = {
-        level: closest_match.severity_label,
-        message: closest_match.message,
-        progname: closest_match.progname,
-        tags: closest_match.tags
-      }.compact
+      message = "#{message}\n\nClosest match found:" \
+        "#{Lumberjack::CaptureDevice.formatted_expectation(closest_match, indent: 2)}"
+    end
 
-      message = "#{message}\n\nClosest match found:\n-----------\n" \
-        "#{Lumberjack::CaptureDevice.formatted_expectation(closest_match_hash)}"
+    message
+  end
+
+  def formatted_negated_failure_message(captured_logger, expected_hash)
+    message = "expected logs not to include entry:\n" \
+      "#{Lumberjack::CaptureDevice.formatted_expectation(expected_hash, indent: 2)}"
+
+    match = captured_logger.match(**expected_hash)
+    if match
+      message = "#{message}\n\nFound entry:\n" \
+        "#{Lumberjack::CaptureDevice.formatted_expectation(match, indent: 2)}"
     end
 
     message

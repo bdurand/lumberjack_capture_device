@@ -5,7 +5,7 @@ require_relative "../spec_helper"
 describe Lumberjack::CaptureDevice do
   let(:logger) { Lumberjack::Logger.new(StringIO.new, level: :info) }
 
-  describe "capture" do
+  describe ".capture" do
     it "should capture log entries inside a block to a buffer" do
       buffer = nil
       device = Lumberjack::CaptureDevice.capture(logger) do |logs|
@@ -26,7 +26,59 @@ describe Lumberjack::CaptureDevice do
     end
   end
 
-  describe "include" do
+  describe ".formatted_entry" do
+    it "should format a log entry into a string" do
+      entry = Lumberjack::LogEntry.new(
+        Time.new(2023, 1, 1, 12, 0, 0),
+        Logger::INFO,
+        "Test message",
+        "TestProgname",
+        1234,
+        {foo: "bar", baz: {one: 1, two: 2}}
+      )
+      expected = <<~STRING
+        2023-01-01 12:00:00 INFO: Test message
+          progname: TestProgname
+          baz.one: 1
+          baz.two: 2
+          foo: bar
+      STRING
+      expect(Lumberjack::CaptureDevice.formatted_entry(entry)).to eq(expected.chomp)
+    end
+
+    it "should omit nil values" do
+      entry = Lumberjack::LogEntry.new(
+        Time.new(2023, 1, 1, 12, 0, 0),
+        Logger::INFO,
+        "Test message",
+        nil,
+        nil,
+        nil
+      )
+      expected = "2023-01-01 12:00:00 INFO: Test message"
+      expect(Lumberjack::CaptureDevice.formatted_entry(entry)).to eq(expected.chomp)
+    end
+
+    it "should indent a specified number of spaces" do
+      entry = Lumberjack::LogEntry.new(
+        Time.new(2023, 1, 1, 12, 0, 0),
+        Logger::INFO,
+        "Test message",
+        "TestProgname",
+        1234,
+        {foo: "bar"}
+      )
+      expected = <<~STRING
+        2023-01-01 12:00:00 INFO: Test message
+          progname: TestProgname
+          foo: bar
+      STRING
+      expected = expected.split("\n").collect { |line| "    #{line}" }.join("\n")
+      expect(Lumberjack::CaptureDevice.formatted_entry(entry, indent: 4)).to eq(expected.chomp)
+    end
+  end
+
+  describe "#include?" do
     it "should match the log level by label or constant" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar")
@@ -133,7 +185,7 @@ describe Lumberjack::CaptureDevice do
     end
   end
 
-  describe "extract" do
+  describe "#extract" do
     it "should extract entries from the buffer" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar", foo: "bar", baz: {one: 1, two: [2, 22], three: nil})
@@ -164,6 +216,25 @@ describe Lumberjack::CaptureDevice do
       expect(logs.inspect).to include "duration: 1.23"
       expect(logs.inspect).to include "foo.bar: baz"
       expect(logs.inspect).to include "progname: TestProgname"
+    end
+  end
+
+  describe "#match" do
+    it "should return the first match where criteria match" do
+      logs = Lumberjack::CaptureDevice.capture(logger) do
+        logger.info("User logged in successfully")
+      end
+      result = logs.match(level: :info, message: "User logged in successfully")
+      expect(result.message).to eq "User logged in successfully"
+      expect(result.severity_label).to eq "INFO"
+    end
+
+    it "should return nil when no entry matches" do
+      logs = Lumberjack::CaptureDevice.capture(logger) do
+        logger.info("User logged in successfully")
+      end
+      result = logs.match(level: :error, message: "Non-existent message")
+      expect(result).to be_nil
     end
   end
 
