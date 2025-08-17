@@ -80,7 +80,7 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
 
   def expectation_description(expected_hash)
     info = []
-    info << "level: #{expected_hash[:level].inspect}" unless expected_hash[:level].nil?
+    info << "severity: #{expected_hash[:severity].inspect}" unless expected_hash[:severity].nil?
     info << "message: #{expected_hash[:message].inspect}" unless expected_hash[:message].nil?
     info << "progname: #{expected_hash[:progname].inspect}" unless expected_hash[:progname].nil?
     if expected_hash[:tags].is_a?(Hash) && !expected_hash[:tags].empty?

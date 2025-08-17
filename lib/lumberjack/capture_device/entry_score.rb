@@ -8,7 +8,7 @@ class Lumberjack::CaptureDevice::EntryScore
   class << self
     # Calculate the overall match score for an entry against all provided filters
     # Returns a score between 0.0 and 1.0
-    def calculate_match_score(entry, message_filter, level_filter, tags_filter, progname_filter)
+    def calculate_match_score(entry, message_filter, severity_filter, tags_filter, progname_filter)
       scores = []
       weights = []
 
@@ -19,14 +19,14 @@ class Lumberjack::CaptureDevice::EntryScore
         weights << 0.4  # Weight message matching highly
       end
 
-      # Check level match
-      if level_filter
-        level_score = if entry.severity == level_filter
-          1.0  # Exact level match
+      # Check severity match
+      if severity_filter
+        severity_score = if entry.severity == severity_filter
+          1.0  # Exact severity match
         else
-          level_proximity_score(entry.severity, level_filter)  # Partial level match
+          severity_proximity_score(entry.severity, severity_filter)  # Partial severity match
         end
-        scores << level_score
+        scores << severity_score
         weights << 0.3
       end
 
@@ -92,10 +92,10 @@ class Lumberjack::CaptureDevice::EntryScore
       end
     end
 
-    # Calculate proximity score based on log level distance
-    def level_proximity_score(entry_level, filter_level)
-      level_diff = (entry_level - filter_level).abs
-      case level_diff
+    # Calculate proximity score based on log severity distance
+    def severity_proximity_score(entry_severity, filter_severity)
+      severity_diff = (entry_severity - filter_severity).abs
+      case severity_diff
       when 0 then 1.0
       when 1 then 0.7
       when 2 then 0.4

@@ -3,7 +3,7 @@
 require_relative "../../spec_helper"
 
 describe Lumberjack::CaptureDevice::EntryScore do
-  let(:logger) { Lumberjack::Logger.new(StringIO.new, level: :debug) }
+  let(:logger) { Lumberjack::Logger.new(StringIO.new, severity: :debug) }
 
   # Create real log entries using the capture device
   let(:entries) do
@@ -29,7 +29,7 @@ describe Lumberjack::CaptureDevice::EntryScore do
       score = described_class.calculate_match_score(
         entry_info,
         "User logged in successfully",
-        Lumberjack::Severity::INFO,
+        Logger::INFO,
         {},
         nil
       )
@@ -45,7 +45,7 @@ describe Lumberjack::CaptureDevice::EntryScore do
       score = described_class.calculate_match_score(
         entry_info,
         "User logged in successfully",
-        Lumberjack::Severity::WARN, # Different level
+        Logger::WARN, # Different severity
         nil,
         nil
       )
@@ -53,11 +53,11 @@ describe Lumberjack::CaptureDevice::EntryScore do
       expect(score).to be < 1.0
     end
 
-    it "considers level proximity for nearby levels" do
+    it "considers severity proximity for nearby severitys" do
       exact_score = described_class.calculate_match_score(
         entry_info,
         nil,
-        Lumberjack::Severity::INFO,
+        Logger::INFO,
         nil,
         nil
       )
@@ -65,7 +65,7 @@ describe Lumberjack::CaptureDevice::EntryScore do
       nearby_score = described_class.calculate_match_score(
         entry_info,
         nil,
-        Lumberjack::Severity::WARN, # One level away
+        Logger::WARN, # One severity away
         nil,
         nil
       )
@@ -73,7 +73,7 @@ describe Lumberjack::CaptureDevice::EntryScore do
       distant_score = described_class.calculate_match_score(
         entry_info,
         nil,
-        Lumberjack::Severity::FATAL, # Far away
+        Logger::FATAL, # Far away
         nil,
         nil
       )
@@ -86,7 +86,7 @@ describe Lumberjack::CaptureDevice::EntryScore do
       score = described_class.calculate_match_score(
         entry_info,
         "completely different message",
-        Lumberjack::Severity::FATAL,
+        Logger::FATAL,
         {different: "tags"},
         "DifferentApp"
       )
@@ -193,35 +193,35 @@ describe Lumberjack::CaptureDevice::EntryScore do
     end
   end
 
-  describe ".level_proximity_score" do
-    it "returns 1.0 for exact level match" do
-      score = described_class.level_proximity_score(
-        Lumberjack::Severity::INFO,
-        Lumberjack::Severity::INFO
+  describe ".severity_proximity_score" do
+    it "returns 1.0 for exact severity match" do
+      score = described_class.severity_proximity_score(
+        Logger::INFO,
+        Logger::INFO
       )
       expect(score).to eq 1.0
     end
 
-    it "returns 0.7 for one level difference" do
-      score = described_class.level_proximity_score(
-        Lumberjack::Severity::INFO,
-        Lumberjack::Severity::WARN
+    it "returns 0.7 for one severity difference" do
+      score = described_class.severity_proximity_score(
+        Logger::INFO,
+        Logger::WARN
       )
       expect(score).to eq 0.7
     end
 
-    it "returns 0.4 for two level difference" do
-      score = described_class.level_proximity_score(
-        Lumberjack::Severity::DEBUG,
-        Lumberjack::Severity::WARN
+    it "returns 0.4 for two severity difference" do
+      score = described_class.severity_proximity_score(
+        Logger::DEBUG,
+        Logger::WARN
       )
       expect(score).to eq 0.4
     end
 
-    it "returns 0.0 for three or more level difference" do
-      score = described_class.level_proximity_score(
-        Lumberjack::Severity::DEBUG,
-        Lumberjack::Severity::FATAL
+    it "returns 0.0 for three or more severity difference" do
+      score = described_class.severity_proximity_score(
+        Logger::DEBUG,
+        Logger::FATAL
       )
       expect(score).to eq 0.0
     end

@@ -4,7 +4,7 @@ require_relative "../../spec_helper"
 require_relative "../../../lib/lumberjack/capture_device/rspec"
 
 RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
-  let(:logger) { Lumberjack::Logger.new(StringIO.new, level: :debug) }
+  let(:logger) { Lumberjack::Logger.new(StringIO.new, severity: :debug) }
   let(:capture_device) do
     device = Lumberjack::CaptureDevice.new
     logger.device = device
@@ -17,7 +17,7 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
 
     device
   end
-  let(:matcher) { described_class.new(level: :info, message: "test message") }
+  let(:matcher) { described_class.new(severity: :info, message: "test message") }
 
   describe "#matches?" do
     context "when given a CaptureDevice directly" do
@@ -26,7 +26,7 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
       end
 
       it "returns false when the expected entry does not exist" do
-        non_matching_matcher = described_class.new(level: :info, message: "non-existent message")
+        non_matching_matcher = described_class.new(severity: :info, message: "non-existent message")
         expect(non_matching_matcher.matches?(capture_device)).to be false
       end
     end
@@ -43,7 +43,7 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
   describe "#failure_message" do
     context "when given a valid CaptureDevice" do
       it "returns a formatted message with expected entry and captured logs" do
-        non_matching_matcher = described_class.new(level: :info, message: "non-existent message")
+        non_matching_matcher = described_class.new(severity: :info, message: "non-existent message")
         non_matching_matcher.matches?(capture_device)
 
         message = non_matching_matcher.failure_message
@@ -70,7 +70,7 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
         )
         allow(empty_device).to receive(:closest_match).and_return(entry)
 
-        non_matching_matcher = described_class.new(level: :info, message: "non-existent message")
+        non_matching_matcher = described_class.new(severity: :info, message: "non-existent message")
         non_matching_matcher.matches?(empty_device)
 
         message = non_matching_matcher.failure_message
@@ -115,20 +115,20 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
 
   describe "#description" do
     it "returns a description of the expectation" do
-      matcher = described_class.new(level: :info, message: "test message", progname: "TestApp")
+      matcher = described_class.new(severity: :info, message: "test message", progname: "TestApp")
 
       description = matcher.description
 
-      expect(description).to eq("have logged entry with level: :info, message: \"test message\", progname: \"TestApp\"")
+      expect(description).to eq("have logged entry with severity: :info, message: \"test message\", progname: \"TestApp\"")
     end
 
     it "handles expectations with tags" do
-      matcher = described_class.new(level: :info, tags: {user_id: 123, action: "login"})
+      matcher = described_class.new(severity: :info, tags: {user_id: 123, action: "login"})
 
       description = matcher.description
 
       expect(description).to include("have logged entry with")
-      expect(description).to include("level: :info")
+      expect(description).to include("severity: :info")
       expect(description).to include("tags:")
       expect(description).to include("user_id=123")
       expect(description).to include("action=\"login\"")
@@ -165,34 +165,34 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
 
     describe "#expectation_description" do
       it "formats a simple expectation" do
-        expected_hash = {level: :info, message: "test"}
+        expected_hash = {severity: :info, message: "test"}
         description = matcher.send(:expectation_description, expected_hash)
-        expect(description).to eq("level: :info, message: \"test\"")
+        expect(description).to eq("severity: :info, message: \"test\"")
       end
 
       it "includes progname when present" do
-        expected_hash = {level: :info, message: "test", progname: "TestApp"}
+        expected_hash = {severity: :info, message: "test", progname: "TestApp"}
         description = matcher.send(:expectation_description, expected_hash)
-        expect(description).to eq("level: :info, message: \"test\", progname: \"TestApp\"")
+        expect(description).to eq("severity: :info, message: \"test\", progname: \"TestApp\"")
       end
 
       it "formats tags when present" do
-        expected_hash = {level: :info, tags: {user_id: 123, action: "login"}}
+        expected_hash = {severity: :info, tags: {user_id: 123, action: "login"}}
         description = matcher.send(:expectation_description, expected_hash)
-        expect(description).to include("level: :info")
+        expect(description).to include("severity: :info")
         expect(description).to include("tags: user_id=123, action=\"login\"")
       end
 
       it "handles empty tags" do
-        expected_hash = {level: :info, tags: {}}
+        expected_hash = {severity: :info, tags: {}}
         description = matcher.send(:expectation_description, expected_hash)
-        expect(description).to eq("level: :info")
+        expect(description).to eq("severity: :info")
       end
 
       it "handles nil values by omitting them" do
-        expected_hash = {level: :info, message: nil, progname: nil}
+        expected_hash = {severity: :info, message: nil, progname: nil}
         description = matcher.send(:expectation_description, expected_hash)
-        expect(description).to eq("level: :info")
+        expect(description).to eq("severity: :info")
       end
     end
   end
@@ -204,8 +204,8 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
         logger.info("integration test message")
       end
 
-      expect(logs).to include_log_entry(level: :info, message: "integration test message")
-      expect(logs).not_to include_log_entry(level: :error, message: "integration test message")
+      expect(logs).to include_log_entry(severity: :info, message: "integration test message")
+      expect(logs).not_to include_log_entry(severity: :error, message: "integration test message")
     end
 
     it "provides clear failure messages in real usage" do
@@ -214,7 +214,7 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
       end
 
       expect {
-        expect(logs).to include_log_entry(level: :info, message: "expected message")
+        expect(logs).to include_log_entry(severity: :info, message: "expected message")
       }.to raise_error(RSpec::Expectations::ExpectationNotMetError, /expected logs to include entry/)
     end
   end

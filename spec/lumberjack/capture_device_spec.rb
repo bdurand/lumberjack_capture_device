@@ -79,14 +79,15 @@ describe Lumberjack::CaptureDevice do
   end
 
   describe "#include?" do
-    it "should match the log level by label or constant" do
+    it "should match the log severity by label or constant" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar")
       end
+      expect(logs).to include(severity: :info)
+      expect(logs).to include(severity: "info")
+      expect(logs).to include(severity: Logger::INFO)
+      expect(logs).to_not include(severity: :error)
       expect(logs).to include(level: :info)
-      expect(logs).to include(level: "info")
-      expect(logs).to include(level: Logger::INFO)
-      expect(logs).to_not include(level: :error)
     end
 
     it "should match the log message" do
@@ -168,20 +169,19 @@ describe Lumberjack::CaptureDevice do
         logger.info("foobar", foo: [{bar: "baz"}, {bip: "bop"}])
       end
       expect(logs).to include(tags: {foo: [{bar: "baz"}, {bip: "bop"}]})
-      expect(logs).to include(tags: {foo: [{"bar" => "baz"}, {"bip" => "bop"}]})
-      expect(logs).to include(tags: {foo: array_including({"bar" => "baz"})})
+      expect(logs).to include(tags: {foo: array_including({bar: "baz"})})
     end
 
     it "should match combinations" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar", foo: "bar", baz: {one: 1, two: [2, 22]})
       end
-      expect(logs).to include(level: :info, message: "foobar", tags: {foo: "bar"})
-      expect(logs).to include(level: :info, message: "foobar")
-      expect(logs).to include(level: :info, tags: {foo: "bar"})
+      expect(logs).to include(severity: :info, message: "foobar", tags: {foo: "bar"})
+      expect(logs).to include(severity: :info, message: "foobar")
+      expect(logs).to include(severity: :info, tags: {foo: "bar"})
       expect(logs).to include(message: "foobar", tags: {foo: "bar"})
       expect(logs).to_not include(message: "foobar", tags: {foo: "bax"})
-      expect(logs).to_not include(level: :warn, message: "foobar")
+      expect(logs).to_not include(severity: :warn, message: "foobar")
     end
   end
 
@@ -196,6 +196,7 @@ describe Lumberjack::CaptureDevice do
       end
       expect(logs.extract(message: /foobar/i).collect(&:message)).to eq ["foobar", "FOOBAR"]
       expect(logs.extract(message: /foobar/i, limit: 1).collect(&:message)).to eq ["foobar"]
+      expect(logs.extract(severity: :info).collect(&:message)).to eq ["foobar", "baxbar"]
       expect(logs.extract(level: :info).collect(&:message)).to eq ["foobar", "baxbar"]
       expect(logs.extract(tags: {foo: "bar"}).collect(&:message)).to eq ["foobar", "baxbar"]
       expect(logs.extract(progname: "TestProgname").collect(&:message)).to eq ["baxbar"]
@@ -224,16 +225,25 @@ describe Lumberjack::CaptureDevice do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("User logged in successfully")
       end
-      result = logs.match(level: :info, message: "User logged in successfully")
+      result = logs.match(severity: :info, message: "User logged in successfully")
       expect(result.message).to eq "User logged in successfully"
       expect(result.severity_label).to eq "INFO"
+    end
+
+    it "should match on level" do
+      logs = Lumberjack::CaptureDevice.capture(logger) do
+        logger.info("User logged in successfully")
+      end
+      result = logs.match(level: :info, message: "User logged in successfully")
+      expect(result.message).to eq "User logged in successfully"
+      expect(result.severity).to eq Logger::INFO
     end
 
     it "should return nil when no entry matches" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("User logged in successfully")
       end
-      result = logs.match(level: :error, message: "Non-existent message")
+      result = logs.match(severity: :error, message: "Non-existent message")
       expect(result).to be_nil
     end
   end
@@ -251,23 +261,30 @@ describe Lumberjack::CaptureDevice do
     end
 
     it "should return the exact match when criteria match perfectly" do
-      result = logs.closest_match(level: :info, message: "User logged in successfully")
+      result = logs.closest_match(severity: :info, message: "User logged in successfully")
       expect(result).to_not be_nil
       expect(result.message).to eq "User logged in successfully"
       expect(result.severity_label).to eq "INFO"
     end
 
     it "should return the closest match based on string similarity" do
-      result = logs.closest_match(level: :info, message: "User login successful")
+      result = logs.closest_match(severity: :info, message: "User login successful")
       expect(result).to_not be_nil
       expect(result.message).to eq "User logged in successfully"
     end
 
-    it "should find matches with level proximity when exact level doesn't match" do
-      result = logs.closest_match(level: :info, message: "Database connection")
+    it "should find matches with severity proximity when exact severity doesn't match" do
+      result = logs.closest_match(severity: :info, message: "Database connection")
       expect(result).to_not be_nil
       expect(result.message).to eq "Database connection slow"
       expect(result.severity_label).to eq "WARN"
+    end
+
+    it "should find matches with level proximity when exact severity doesn't match" do
+      result = logs.closest_match(level: :info, message: "Database connection")
+      expect(result).to_not be_nil
+      expect(result.message).to eq "Database connection slow"
+      expect(result.severity).to eq Logger::WARN
     end
 
     it "should match based on tags" do
@@ -291,19 +308,19 @@ describe Lumberjack::CaptureDevice do
     end
 
     it "should return nil when no entry meets minimum criteria" do
-      result = logs.closest_match(level: :fatal, message: "Completely different message")
+      result = logs.closest_match(severity: :fatal, message: "Completely different message")
       expect(result).to be_nil
     end
 
     it "should return nil when buffer is empty" do
       empty_logs = Lumberjack::CaptureDevice.new
-      result = empty_logs.closest_match(level: :info, message: "test")
+      result = empty_logs.closest_match(severity: :info, message: "test")
       expect(result).to be_nil
     end
 
     it "should handle multiple criteria and weight them properly" do
       result = logs.closest_match(
-        level: :debug,
+        severity: :debug,
         message: "Processing",
         tags: {action: "login"}
       )
