@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Depends on `lumberjack` 2.0 or greater
 - You can now use `level` and `severity` interchangeably when checking for log entry attributes. "Severity" is more correct and is the preferred term.
+- You can now use `attributes` instead of `tags` when checking for log entry attributes. "Attributes" is the preferred term.
 
 ## 1.2.2
 

@@ -21,7 +21,7 @@ describe Lumberjack::CaptureDevice::EntryScore do
   let(:entry_info) { entries[0] }      # "User logged in successfully"
   let(:entry_warn) { entries[1] }      # "Database connection slow"
   let(:entry_error) { entries[2] }     # "Failed to authenticate user"
-  let(:entry_debug) { entries[3] }     # "Processing request" with tags
+  let(:entry_debug) { entries[3] }     # "Processing request" with attributes
   let(:entry_with_progname) { entries[4] } # "Service started" with progname
 
   describe ".calculate_match_score" do
@@ -87,13 +87,13 @@ describe Lumberjack::CaptureDevice::EntryScore do
         entry_info,
         "completely different message",
         Logger::FATAL,
-        {different: "tags"},
+        {different: "attributes"},
         "DifferentApp"
       )
       expect(score).to be < described_class::MIN_SCORE_THRESHOLD
     end
 
-    it "handles tag matching" do
+    it "handles attribute matching" do
       score = described_class.calculate_match_score(
         entry_debug,
         nil,
@@ -227,45 +227,45 @@ describe Lumberjack::CaptureDevice::EntryScore do
     end
   end
 
-  describe ".calculate_tags_score" do
-    let(:entry_tags) { {user_id: 123, action: "login", metadata: {ip: "192.168.1.1"}} }
+  describe ".calculate_attributes_score" do
+    let(:entry_attributes) { {user_id: 123, action: "login", metadata: {ip: "192.168.1.1"}} }
 
-    it "returns 1.0 for exact tag matches" do
-      score = described_class.calculate_tags_score(entry_tags, {user_id: 123})
+    it "returns 1.0 for exact attribute matches" do
+      score = described_class.calculate_attributes_score(entry_attributes, {user_id: 123})
       expect(score).to eq 1.0
     end
 
-    it "returns partial score for partially matching tags" do
-      score = described_class.calculate_tags_score(
-        entry_tags,
+    it "returns partial score for partially matching attributes" do
+      score = described_class.calculate_attributes_score(
+        entry_attributes,
         {user_id: 123, action: "logout"} # One matches, one doesn't
       )
       expect(score).to eq 0.5
     end
 
-    it "returns 0.0 for completely non-matching tags" do
-      score = described_class.calculate_tags_score(
-        entry_tags,
-        {different_tag: "value"}
+    it "returns 0.0 for completely non-matching attributes" do
+      score = described_class.calculate_attributes_score(
+        entry_attributes,
+        {different_attribute: "value"}
       )
       expect(score).to eq 0.0
     end
 
-    it "handles nested tag matching" do
-      score = described_class.calculate_tags_score(
-        entry_tags,
+    it "handles nested attribute matching" do
+      score = described_class.calculate_attributes_score(
+        entry_attributes,
         {metadata: {ip: "192.168.1.1"}}
       )
       expect(score).to eq 1.0
     end
 
-    it "returns 0.0 when entry_tags is nil" do
-      score = described_class.calculate_tags_score(nil, {user_id: 123})
+    it "returns 0.0 when entry_attributes is nil" do
+      score = described_class.calculate_attributes_score(nil, {user_id: 123})
       expect(score).to eq 0.0
     end
 
-    it "returns 0.0 when tags_filter is not a hash" do
-      score = described_class.calculate_tags_score(entry_tags, "not a hash")
+    it "returns 0.0 when attributes_filter is not a hash" do
+      score = described_class.calculate_attributes_score(entry_attributes, "not a hash")
       expect(score).to eq 0.0
     end
   end

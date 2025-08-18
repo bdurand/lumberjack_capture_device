@@ -111,76 +111,86 @@ describe Lumberjack::CaptureDevice do
       expect(logs).to_not include(progname: "OtherProgname")
     end
 
-    it "should match tags" do
+    it "should match attributes" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar", foo: "bar", baz: {one: 1, two: [2, 22], three: nil})
       end
-      expect(logs).to include(tags: {foo: "bar"})
-      expect(logs).to include(tags: {"foo" => "bar"})
-      expect(logs).to include(tags: {foo: /b/})
-      expect(logs).to include(tags: {foo: anything})
-      expect(logs).to_not include(tags: {foo: "other"})
-      expect(logs).to include(tags: {baz: {one: 1}})
-      expect(logs).to include(tags: {"baz" => {"one" => Integer}})
-      expect(logs).to_not include(tags: {baz: {one: "one"}})
-      expect(logs).to include(tags: {baz: {one: 1, two: [2, 22]}})
-      expect(logs).to include(tags: {baz: {three: nil}})
+      expect(logs).to include(attributes: {foo: "bar"})
+      expect(logs).to include(attributes: {"foo" => "bar"})
+      expect(logs).to include(attributes: {foo: /b/})
+      expect(logs).to include(attributes: {foo: anything})
+      expect(logs).to_not include(attributes: {foo: "other"})
+      expect(logs).to include(attributes: {baz: {one: 1}})
+      expect(logs).to include(attributes: {"baz" => {"one" => Integer}})
+      expect(logs).to_not include(attributes: {baz: {one: "one"}})
+      expect(logs).to include(attributes: {baz: {one: 1, two: [2, 22]}})
+      expect(logs).to include(attributes: {baz: {three: nil}})
     end
 
-    it "should match nil if the tag is not present" do
+    it "can use tags as an alias for attributes" do
+      logs = Lumberjack::CaptureDevice.capture(logger) do
+        logger.info("User logged in successfully", user_id: 123)
+      end
+      result = logs.extract(tags: {user_id: 123})
+      expect(result.first.message).to_not be_nil
+      expect(result.first.message).to eq "User logged in successfully"
+      expect(result.first.attributes["user_id"]).to eq 123
+    end
+
+    it "should match nil if the attribute is not present" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar", foo: "bar", fip: [])
       end
-      expect(logs).to_not include(tags: {foo: nil})
-      expect(logs).to include(tags: {baz: nil})
-      expect(logs).to include(tags: {fip: nil})
+      expect(logs).to_not include(attributes: {foo: nil})
+      expect(logs).to include(attributes: {baz: nil})
+      expect(logs).to include(attributes: {fip: nil})
     end
 
-    it "should match empty array if the tag is not present" do
+    it "should match empty array if the attribute is not present" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar", foo: "bar", fip: [])
       end
-      expect(logs).to_not include(tags: {foo: []})
-      expect(logs).to include(tags: {baz: []})
-      expect(logs).to include(tags: {fip: []})
+      expect(logs).to_not include(attributes: {foo: []})
+      expect(logs).to include(attributes: {baz: []})
+      expect(logs).to include(attributes: {fip: []})
     end
 
-    it "should expand dot notation on tag filters" do
+    it "should expand dot notation on attribute filters" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar", foo: {bar: {baz: "boo"}})
       end
-      expect(logs).to include(tags: {"foo.bar.baz" => "boo"})
-      expect(logs).to_not include(tags: {"foo.bar.baz" => "other"})
-      expect(logs).to include(tags: {"foo.bar.baz" => /bo/})
-      expect(logs).to include(tags: {"foo.bar" => {"baz" => "boo"}})
-      expect(logs).to include(tags: {"foo.bar.baz" => String})
-      expect(logs).to_not include(tags: {"foo.bar.baz" => Integer})
+      expect(logs).to include(attributes: {"foo.bar.baz" => "boo"})
+      expect(logs).to_not include(attributes: {"foo.bar.baz" => "other"})
+      expect(logs).to include(attributes: {"foo.bar.baz" => /bo/})
+      expect(logs).to include(attributes: {"foo.bar" => {"baz" => "boo"}})
+      expect(logs).to include(attributes: {"foo.bar.baz" => String})
+      expect(logs).to_not include(attributes: {"foo.bar.baz" => Integer})
     end
 
-    it "should merge dot notation tags" do
+    it "should merge dot notation attributes" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar", foo: {bar: {baz: "boo"}}, "foo.bar": {bip: "bop"}, "foo.bar.qux": "kook")
       end
-      expect(logs).to include(tags: {"foo.bar.baz" => "boo"})
+      expect(logs).to include(attributes: {"foo.bar.baz" => "boo"})
     end
 
     it "should match arrays of hashes" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar", foo: [{bar: "baz"}, {bip: "bop"}])
       end
-      expect(logs).to include(tags: {foo: [{bar: "baz"}, {bip: "bop"}]})
-      expect(logs).to include(tags: {foo: array_including({bar: "baz"})})
+      expect(logs).to include(attributes: {foo: [{bar: "baz"}, {bip: "bop"}]})
+      expect(logs).to include(attributes: {foo: array_including({bar: "baz"})})
     end
 
     it "should match combinations" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar", foo: "bar", baz: {one: 1, two: [2, 22]})
       end
-      expect(logs).to include(severity: :info, message: "foobar", tags: {foo: "bar"})
+      expect(logs).to include(severity: :info, message: "foobar", attributes: {foo: "bar"})
       expect(logs).to include(severity: :info, message: "foobar")
-      expect(logs).to include(severity: :info, tags: {foo: "bar"})
-      expect(logs).to include(message: "foobar", tags: {foo: "bar"})
-      expect(logs).to_not include(message: "foobar", tags: {foo: "bax"})
+      expect(logs).to include(severity: :info, attributes: {foo: "bar"})
+      expect(logs).to include(message: "foobar", attributes: {foo: "bar"})
+      expect(logs).to_not include(message: "foobar", attributes: {foo: "bax"})
       expect(logs).to_not include(severity: :warn, message: "foobar")
     end
   end
@@ -198,8 +208,27 @@ describe Lumberjack::CaptureDevice do
       expect(logs.extract(message: /foobar/i, limit: 1).collect(&:message)).to eq ["foobar"]
       expect(logs.extract(severity: :info).collect(&:message)).to eq ["foobar", "baxbar"]
       expect(logs.extract(level: :info).collect(&:message)).to eq ["foobar", "baxbar"]
-      expect(logs.extract(tags: {foo: "bar"}).collect(&:message)).to eq ["foobar", "baxbar"]
+      expect(logs.extract(attributes: {foo: "bar"}).collect(&:message)).to eq ["foobar", "baxbar"]
       expect(logs.extract(progname: "TestProgname").collect(&:message)).to eq ["baxbar"]
+    end
+
+    it "can use tags as an alias for attributes" do
+      logs = Lumberjack::CaptureDevice.capture(logger) do
+        logger.info("User logged in successfully", user_id: 123)
+      end
+      result = logs.extract(tags: {user_id: 123})
+      expect(result.first.message).to_not be_nil
+      expect(result.first.message).to eq "User logged in successfully"
+      expect(result.first.attributes["user_id"]).to eq 123
+    end
+
+    it "can use level as an alias for attributes" do
+      logs = Lumberjack::CaptureDevice.capture(logger) do
+        logger.info("User logged in successfully")
+      end
+      result = logs.extract(level: :info)
+      expect(result.first.message).to_not be_nil
+      expect(result.first.message).to eq "User logged in successfully"
     end
   end
 
@@ -237,6 +266,26 @@ describe Lumberjack::CaptureDevice do
       result = logs.match(level: :info, message: "User logged in successfully")
       expect(result.message).to eq "User logged in successfully"
       expect(result.severity).to eq Logger::INFO
+    end
+
+    it "should match on attributes" do
+      logs = Lumberjack::CaptureDevice.capture(logger) do
+        logger.info("User logged in successfully", user_id: 123)
+      end
+      result = logs.match(attributes: {user_id: 123})
+      expect(result).to_not be_nil
+      expect(result.message).to eq "User logged in successfully"
+      expect(result.attributes["user_id"]).to eq 123
+    end
+
+    it "can use tags as an alias for attributes" do
+      logs = Lumberjack::CaptureDevice.capture(logger) do
+        logger.info("User logged in successfully", user_id: 123)
+      end
+      result = logs.match(tags: {user_id: 123})
+      expect(result).to_not be_nil
+      expect(result.message).to eq "User logged in successfully"
+      expect(result.attributes["user_id"]).to eq 123
     end
 
     it "should return nil when no entry matches" do
@@ -287,11 +336,18 @@ describe Lumberjack::CaptureDevice do
       expect(result.severity).to eq Logger::WARN
     end
 
-    it "should match based on tags" do
+    it "should match based on attributes" do
+      result = logs.closest_match(attributes: {user_id: 123})
+      expect(result).to_not be_nil
+      expect(result.message).to eq "Processing request"
+      expect(result.attributes["user_id"]).to eq 123
+    end
+
+    it "can use tags as an alias for attributes" do
       result = logs.closest_match(tags: {user_id: 123})
       expect(result).to_not be_nil
       expect(result.message).to eq "Processing request"
-      expect(result.tags["user_id"]).to eq 123
+      expect(result.attributes["user_id"]).to eq 123
     end
 
     it "should match based on progname" do
@@ -322,12 +378,12 @@ describe Lumberjack::CaptureDevice do
       result = logs.closest_match(
         severity: :debug,
         message: "Processing",
-        tags: {action: "login"}
+        attributes: {action: "login"}
       )
       expect(result).to_not be_nil
       expect(result.message).to eq "Processing request"
       expect(result.severity_label).to eq "DEBUG"
-      expect(result.tags["action"]).to eq "login"
+      expect(result.attributes["action"]).to eq "login"
     end
 
     it "should handle string similarity for progname" do
@@ -336,12 +392,12 @@ describe Lumberjack::CaptureDevice do
       expect(result.progname).to eq "TestService"
     end
 
-    it "should handle nested tag matching" do
+    it "should handle nested attribute matching" do
       nested_logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("Nested test", user: {id: 456, name: "John"})
       end
 
-      result = nested_logs.closest_match(tags: {user: {id: 456}})
+      result = nested_logs.closest_match(attributes: {user: {id: 456}})
       expect(result).to_not be_nil
       expect(result.message).to eq "Nested test"
     end

@@ -34,8 +34,8 @@ RSpec.describe "rspec matchers" do
         expect(logs).to include_log_entry(severity: :warn)
         expect(logs).to include_log_entry(message: "warning message")
         expect(logs).to include_log_entry(message: /warning/)
-        expect(logs).to include_log_entry(tags: {user_id: 123})
-        expect(logs).to include_log_entry(tags: {action: "login"})
+        expect(logs).to include_log_entry(attributes: {user_id: 123})
+        expect(logs).to include_log_entry(attributes: {action: "login"})
       end
 
       it "matches with regular expressions" do
@@ -47,17 +47,17 @@ RSpec.describe "rspec matchers" do
         expect(logs).not_to include_log_entry(severity: :info, message: /User \d+ logged out/)
       end
 
-      it "matches with complex tag structures" do
+      it "matches with complex attribute structures" do
         logs = capture_logger(logger) do
           logger.info("complex log",
             user: {id: 123, name: "John"},
             metadata: {version: "1.0", features: ["auth", "logging"]})
         end
 
-        expect(logs).to include_log_entry(tags: {user: {id: 123}})
-        expect(logs).to include_log_entry(tags: {"user.id" => 123})
-        expect(logs).to include_log_entry(tags: {metadata: {version: "1.0"}})
-        expect(logs).not_to include_log_entry(tags: {user: {id: 456}})
+        expect(logs).to include_log_entry(attributes: {user: {id: 123}})
+        expect(logs).to include_log_entry(attributes: {"user.id" => 123})
+        expect(logs).to include_log_entry(attributes: {metadata: {version: "1.0"}})
+        expect(logs).not_to include_log_entry(attributes: {user: {id: 456}})
       end
 
       it "matches with progname" do

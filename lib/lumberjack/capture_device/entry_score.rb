@@ -8,7 +8,7 @@ class Lumberjack::CaptureDevice::EntryScore
   class << self
     # Calculate the overall match score for an entry against all provided filters
     # Returns a score between 0.0 and 1.0
-    def calculate_match_score(entry, message_filter, severity_filter, tags_filter, progname_filter)
+    def calculate_match_score(entry, message_filter, severity_filter, attributes_filter, progname_filter)
       scores = []
       weights = []
 
@@ -37,10 +37,10 @@ class Lumberjack::CaptureDevice::EntryScore
         weights << 0.2
       end
 
-      # Check tags match
-      if tags_filter.is_a?(Hash) && !tags_filter.empty?
-        tags_score = calculate_tags_score(entry.tags, tags_filter)
-        scores << tags_score
+      # Check attributes match
+      if attributes_filter.is_a?(Hash) && !attributes_filter.empty?
+        attributes_score = calculate_attributes_score(entry.attributes, attributes_filter)
+        scores << attributes_score
         weights << 0.3
       end
 
@@ -103,18 +103,18 @@ class Lumberjack::CaptureDevice::EntryScore
       end
     end
 
-    # Calculate score for tag matching
-    def calculate_tags_score(entry_tags, tags_filter)
-      return 0.0 unless entry_tags && tags_filter.is_a?(Hash)
+    # Calculate score for attribute matching
+    def calculate_attributes_score(entry_attributes, attributes_filter)
+      return 0.0 unless entry_attributes && attributes_filter.is_a?(Hash)
 
-      tags_filter = deep_stringify_keys(Lumberjack::Utils.expand_tags(tags_filter))
-      tags = deep_stringify_keys(Lumberjack::Utils.expand_tags(entry_tags))
+      attributes_filter = deep_stringify_keys(Lumberjack::Utils.expand_attributes(attributes_filter))
+      attributes = deep_stringify_keys(Lumberjack::Utils.expand_attributes(entry_attributes))
 
-      total_tag_filters = count_tag_filters(tags_filter)
-      return 0.0 if total_tag_filters == 0
+      total_attribute_filters = count_attribute_filters(attributes_filter)
+      return 0.0 if total_attribute_filters == 0
 
-      matched_tags = count_matched_tags(tags, tags_filter)
-      matched_tags.to_f / total_tag_filters
+      matched_attributes = count_matched_attributes(attributes, attributes_filter)
+      matched_attributes.to_f / total_attribute_filters
     end
 
     private
@@ -171,10 +171,10 @@ class Lumberjack::CaptureDevice::EntryScore
       matrix[str1.length][str2.length]
     end
 
-    def count_tag_filters(tags_filter, count = 0)
-      tags_filter.each do |_name, value_filter|
+    def count_attribute_filters(attributes_filter, count = 0)
+      attributes_filter.each do |_name, value_filter|
         if value_filter.is_a?(Hash)
-          count = count_tag_filters(value_filter, count)
+          count = count_attribute_filters(value_filter, count)
         else
           count += 1
         end
@@ -182,16 +182,16 @@ class Lumberjack::CaptureDevice::EntryScore
       count
     end
 
-    def count_matched_tags(tags, tags_filter, count = 0)
-      return count unless tags && tags_filter
+    def count_matched_attributes(attributes, attributes_filter, count = 0)
+      return count unless attributes && attributes_filter
 
-      tags_filter.each do |name, value_filter|
+      attributes_filter.each do |name, value_filter|
         name = name.to_s
-        tag_values = tags[name]
+        attribute_values = attributes[name]
 
-        if value_filter.is_a?(Hash) && tag_values.is_a?(Hash)
-          count = count_matched_tags(tag_values, value_filter, count)
-        elsif tags.include?(name) && exact_match?(tag_values, value_filter)
+        if value_filter.is_a?(Hash) && attribute_values.is_a?(Hash)
+          count = count_matched_attributes(attribute_values, value_filter, count)
+        elsif attributes.include?(name) && exact_match?(attribute_values, value_filter)
           count += 1
         end
       end

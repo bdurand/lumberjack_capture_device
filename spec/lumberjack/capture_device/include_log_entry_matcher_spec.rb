@@ -122,14 +122,14 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
       expect(description).to eq("have logged entry with severity: :info, message: \"test message\", progname: \"TestApp\"")
     end
 
-    it "handles expectations with tags" do
-      matcher = described_class.new(severity: :info, tags: {user_id: 123, action: "login"})
+    it "handles expectations with attributes" do
+      matcher = described_class.new(severity: :info, attributes: {user_id: 123, action: "login"})
 
       description = matcher.description
 
       expect(description).to include("have logged entry with")
       expect(description).to include("severity: :info")
-      expect(description).to include("tags:")
+      expect(description).to include("attributes:")
       expect(description).to include("user_id=123")
       expect(description).to include("action=\"login\"")
     end
@@ -176,15 +176,15 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
         expect(description).to eq("severity: :info, message: \"test\", progname: \"TestApp\"")
       end
 
-      it "formats tags when present" do
-        expected_hash = {severity: :info, tags: {user_id: 123, action: "login"}}
+      it "formats attributes when present" do
+        expected_hash = {severity: :info, attributes: {user_id: 123, action: "login"}}
         description = matcher.send(:expectation_description, expected_hash)
         expect(description).to include("severity: :info")
-        expect(description).to include("tags: user_id=123, action=\"login\"")
+        expect(description).to include("attributes: user_id=123, action=\"login\"")
       end
 
-      it "handles empty tags" do
-        expected_hash = {severity: :info, tags: {}}
+      it "handles empty attributes" do
+        expected_hash = {severity: :info, attributes: {}}
         description = matcher.send(:expectation_description, expected_hash)
         expect(description).to eq("severity: :info")
       end

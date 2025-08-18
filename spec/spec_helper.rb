@@ -5,6 +5,8 @@ require_relative("../lib/lumberjack/capture_device/rspec")
 
 require "stringio"
 
+$VERBOSE = true
+
 RSpec.configure do |config|
   config.expect_with :rspec do |c|
     c.syntax = [:expect]

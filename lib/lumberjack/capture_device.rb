@@ -59,8 +59,8 @@ module Lumberjack
         timestamp = entry.time.strftime("%Y-%m-%d %H:%M:%S")
         formatted = +"#{indent_str}#{timestamp} #{entry.severity_label}: #{entry.message}"
         formatted << "\n#{indent_str}  progname: #{entry.progname}" if entry.progname.to_s != ""
-        if entry.tags && !entry.tags.empty?
-          Lumberjack::Utils.flatten_tags(entry.tags).to_a.sort_by(&:first).each do |name, value|
+        if entry.attributes && !entry.attributes.empty?
+          Lumberjack::Utils.flatten_attributes(entry.attributes).to_a.sort_by(&:first).each do |name, value|
             formatted << "\n#{indent_str}  #{name}: #{value}"
           end
         end
@@ -81,7 +81,7 @@ module Lumberjack
             "severity" => expectation.severity_label,
             "message" => expectation.message,
             "progname" => expectation.progname,
-            "tags" => expectation.tags
+            "attributes" => expectation.attributes
           }
         end
 
@@ -92,10 +92,10 @@ module Lumberjack
         message << "#{indent_str}severity: #{expectation["severity"].inspect}" if expectation.include?("severity")
         message << "#{indent_str}message: #{expectation["message"].inspect}" if expectation.include?("message")
         message << "#{indent_str}progname: #{expectation["progname"].inspect}" if expectation.include?("progname")
-        if expectation["tags"].is_a?(Hash) && !expectation["tags"].empty?
-          tags = Lumberjack::Utils.flatten_tags(expectation["tags"])
-          prefix = "tags: "
-          tags.sort_by(&:first).each do |name, value|
+        if expectation["attributes"].is_a?(Hash) && !expectation["attributes"].empty?
+          attributes = Lumberjack::Utils.flatten_attributes(expectation["attributes"])
+          prefix = "attributes: "
+          attributes.sort_by(&:first).each do |name, value|
             message << "#{prefix} #{name}: #{value.inspect}"
             prefix = "#{indent_str}      "
           end
@@ -109,15 +109,16 @@ module Lumberjack
     #
     # @param message [String, Regexp, nil] The message to match against the log entries.
     # @param severity [String, Symbol, Integer, nil] The severity to match against the log entries.
-    # @param tags [Hash, nil] A hash of tag names to values to match against the log entries. The tags
-    #   will match nested tags using dot notation (e.g. `foo.bar` will match a tag with the structure
+    # @param attributes [Hash, nil] A hash of attribute names to values to match against the log entries. The attributes
+    #   will match nested attributes using dot notation (e.g. `foo.bar` will match an attribute with the structure
     #   `{foo: {bar: "value"}}`).
     # @param limit [Integer, nil] The maximum number of entries to return. If nil, all matching entries
     #   will be returned.
     # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter.
+    # @param attributes [Hash, nil] Alias for the `attributes` parameter.
     # @return [Array<Lumberjack::LogEntry>] An array of log entries that match the specified filters.
-    def extract(message: nil, severity: nil, tags: nil, progname: nil, limit: nil, level: nil)
-      matcher = LogEntryMatcher.new(message: message, severity: severity || level, tags: tags, progname: progname)
+    def extract(message: nil, severity: nil, attributes: nil, progname: nil, limit: nil, level: nil, tags: nil)
+      matcher = LogEntryMatcher.new(message: message, severity: severity || level, attributes: attributes || tags, progname: progname)
       matched = []
       entries.each do |entry|
         matched << entry if matcher.match?(entry)
@@ -126,7 +127,7 @@ module Lumberjack
       matched
     end
 
-    # Return true if the captured log entries match the specified level, message, and tags.
+    # Return true if the captured log entries match the specified level, message, and attributes.
     #
     # For level, you can specified either a numeric constant (i.e. `Logger::WARN`) or a symbol
     # (i.e. `:warn`).
@@ -135,30 +136,31 @@ module Lumberjack
     # to perform a partial or pattern match. You can also supply any matcher value available
     # in your test library (i.e. in rspec you could use `anything` or `instance_of(Error)`, etc.).
     #
-    # For tags, you can specify a hash of tag names to values to match. You can use
-    # regular expression or matchers as the values here as well. Tags can also be nested to match
-    # nested tags.
+    # For attributes, you can specify a hash of attribute names to values to match. You can use
+    # regular expression or matchers as the values here as well. attributes can also be nested to match
+    # nested attributes.
     #
     # Example:
     #
     # ```
-    # logs.include(level: :warn, message: /something happened/, tags: {duration: instance_of(Float)})
+    # logs.include(level: :warn, message: /something happened/, attributes: {duration: instance_of(Float)})
     # ```
     #
     # @param args [Hash] The filters to apply to the captured entries.
     # @option args [String, Regexp] :message The message to match against the log entries.
     # @option args [String, Symbol, Integer] :level The log level to match against the log entries.
-    # @option args [Hash] :tags A hash of tag names to values to match against the log entries. The tags
-    #   will match nested tags using dot notation (e.g. `foo.bar` will match a tag with the structure
+    # @option args [Hash] :attributes A hash of attribute names to values to match against the log entries. The attributes
+    #   will match nested attributes using dot notation (e.g. `foo.bar` will match an attribute with the structure
     #   `{foo: {bar: "value"}}`).
     # @option args [String] :progname The program name to match against the log entries.
-    # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter.
+    # @option args [String, Symbol, Integer, nil] :level Alias for the `severity` parameter.
+    # @option args [Hash, nil] :attributes Alias for the `attributes` parameter.
     # @return [Boolean] True if any entries match the specified filters, false otherwise.
     def include?(filters)
       munged_filters = {
         message: filters[:message],
         severity: filters[:severity] || filters[:level],
-        tags: filters[:tags],
+        attributes: filters[:attributes] || filters[:attributes],
         progname: filters[:progname]
       }.compact
 
@@ -167,17 +169,17 @@ module Lumberjack
 
     # Return the first captured entry that matches the filters.
     #
-    # @param args [Hash] The filters to apply to the captured entries.
-    # @option args [String, Regexp] :message The message to match against the log entries.
-    # @option args [String, Symbol, Integer] :level The log level to match against the log entries.
-    # @option args [Hash] :tags A hash of tag names to values to match against the log entries. The tags
-    #   will match nested tags using dot notation (e.g. `foo.bar` will match a tag with the structure
+    # @param message [String, Regexp, nil] The message to match against the log entries.
+    # @param severity [String, Symbol, Integer, nil] The log level to match against the log entries.
+    # @param attributes [Hash, nil] A hash of attribute names to values to match against the log entries. The attributes
+    #   will match nested attributes using dot notation (e.g. `foo.bar` will match an attribute with the structure
     #   `{foo: {bar: "value"}}`).
-    # @option args [String] :progname The program name to match against the log entries.
+    # @param progname [String, nil] The program name to match against the log entries.
     # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter.
+    # @param attributes [Hash, nil] Alias for the `attributes` parameter.
     # @return [Lumberjack::LogEntry]
-    def match(message: nil, severity: nil, tags: nil, progname: nil, level: nil)
-      super(message: message, severity: severity || level, tags: tags, progname: progname)
+    def match(message: nil, severity: nil, attributes: nil, progname: nil, level: nil, tags: nil)
+      super(message: message, severity: severity || level, attributes: attributes || tags, progname: progname)
     end
 
     # Return the log entry that most closely matches the specified filters. This method
@@ -187,14 +189,18 @@ module Lumberjack
     #
     # @param message [String, Regexp, nil] The message to match against the log entries.
     # @param severity [String, Symbol, Integer, nil] The severity to match against the log entries.
-    # @param tags [Hash, nil] A hash of tag names to values to match against the log entries.
+    # @param attributes [Hash, nil] A hash of attribute names to values to match against the log entries.
     # @param progname [String, nil] The program name to match against the log entries.
     # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter.
+    # @param tags [Hash, nil] Alias for the `attributes` parameter.
     # @return [Lumberjack::LogEntry, nil] The log entry that most closely matches the filters, or nil if no entry meets minimum criteria.
-    def closest_match(message: nil, severity: nil, tags: nil, progname: nil, level: nil)
+    def closest_match(message: nil, severity: nil, attributes: nil, progname: nil, level: nil, tags: nil)
       return nil if @buffer.empty?
 
-      exact_match = match(message: message, severity: severity || level, tags: tags, progname: progname)
+      severity ||= level
+      attributes ||= tags
+
+      exact_match = match(message: message, severity: severity, attributes: attributes, progname: progname)
       return exact_match if exact_match
 
       severity = Lumberjack::Severity.coerce(severity) if severity
@@ -203,7 +209,7 @@ module Lumberjack
       best_score = 0
 
       @buffer.each do |entry|
-        score = Lumberjack::CaptureDevice::EntryScore.calculate_match_score(entry, message, severity, tags, progname)
+        score = Lumberjack::CaptureDevice::EntryScore.calculate_match_score(entry, message, severity, attributes, progname)
         if score > best_score && score >= Lumberjack::CaptureDevice::EntryScore::MIN_SCORE_THRESHOLD
           best_score = score
           best_entry = entry

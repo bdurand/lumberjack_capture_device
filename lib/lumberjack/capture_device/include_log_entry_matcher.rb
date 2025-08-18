@@ -83,10 +83,10 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
     info << "severity: #{expected_hash[:severity].inspect}" unless expected_hash[:severity].nil?
     info << "message: #{expected_hash[:message].inspect}" unless expected_hash[:message].nil?
     info << "progname: #{expected_hash[:progname].inspect}" unless expected_hash[:progname].nil?
-    if expected_hash[:tags].is_a?(Hash) && !expected_hash[:tags].empty?
-      tags = Lumberjack::Utils.flatten_tags(expected_hash[:tags])
-      tags_info = tags.collect { |name, value| "#{name}=#{value.inspect}" }.join(", ")
-      info << "tags: #{tags_info}"
+    if expected_hash[:attributes].is_a?(Hash) && !expected_hash[:attributes].empty?
+      attributes = Lumberjack::Utils.flatten_attributes(expected_hash[:attributes])
+      attributes_info = attributes.collect { |name, value| "#{name}=#{value.inspect}" }.join(", ")
+      info << "attributes: #{attributes_info}"
     end
     info.join(", ")
   end
