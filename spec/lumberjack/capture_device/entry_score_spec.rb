@@ -2,7 +2,7 @@
 
 require_relative "../../spec_helper"
 
-describe Lumberjack::CaptureDevice::EntryScore do
+RSpec.describe Lumberjack::CaptureDevice::EntryScore do
   let(:logger) { Lumberjack::Logger.new(StringIO.new, severity: :debug) }
 
   # Create real log entries using the capture device

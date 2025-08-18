@@ -154,13 +154,13 @@ module Lumberjack
     #   `{foo: {bar: "value"}}`).
     # @option args [String] :progname The program name to match against the log entries.
     # @option args [String, Symbol, Integer, nil] :level Alias for the `severity` parameter.
-    # @option args [Hash, nil] :attributes Alias for the `attributes` parameter.
+    # @option args [Hash, nil] :tags Alias for the `attributes` parameter.
     # @return [Boolean] True if any entries match the specified filters, false otherwise.
     def include?(filters)
       munged_filters = {
         message: filters[:message],
         severity: filters[:severity] || filters[:level],
-        attributes: filters[:attributes] || filters[:attributes],
+        attributes: filters[:attributes] || filters[:tags],
         progname: filters[:progname]
       }.compact
 

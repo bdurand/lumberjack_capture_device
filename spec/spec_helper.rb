@@ -5,13 +5,10 @@ require_relative("../lib/lumberjack/capture_device/rspec")
 
 require "stringio"
 
-$VERBOSE = true
-
 RSpec.configure do |config|
-  config.expect_with :rspec do |c|
-    c.syntax = [:expect]
-  end
-  config.mock_with :rspec do |c|
-    c.syntax = [:expect]
-  end
+  config.warnings = true
+  config.disable_monkey_patching!
+  config.default_formatter = "doc" if config.files_to_run.one?
+  config.order = :random
+  Kernel.srand config.seed
 end

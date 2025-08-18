@@ -2,7 +2,7 @@
 
 require_relative "../spec_helper"
 
-describe Lumberjack::CaptureDevice do
+RSpec.describe Lumberjack::CaptureDevice do
   let(:logger) { Lumberjack::Logger.new(StringIO.new, level: :info) }
 
   describe ".capture" do
