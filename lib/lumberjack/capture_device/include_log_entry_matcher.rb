@@ -2,11 +2,18 @@
 
 # RSpec matcher for checking captured logs for specific entries.
 class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
+  # Initialize the matcher with expected log entry attributes.
+  #
+  # @param expected_hash [Hash] Expected log entry attributes to match against.
   def initialize(expected_hash)
     @expected_hash = expected_hash.transform_keys(&:to_sym)
     @captured_logger = nil
   end
 
+  # Check if the captured logger contains a log entry matching the expected attributes.
+  #
+  # @param actual [Lumberjack::CaptureDevice] The capture device to check.
+  # @return [Boolean] True if a matching log entry is found.
   def matches?(actual)
     @captured_logger = actual
     return false unless valid_captured_logger?
@@ -14,6 +21,9 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
     @captured_logger.include?(@expected_hash)
   end
 
+  # Generate a failure message when the matcher fails.
+  #
+  # @return [String] A formatted failure message.
   def failure_message
     if valid_captured_logger?
       formatted_failure_message(@captured_logger, @expected_hash)
@@ -22,6 +32,9 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
     end
   end
 
+  # Generate a failure message when the negated matcher fails.
+  #
+  # @return [String] A formatted failure message for negated expectations.
   def failure_message_when_negated
     if valid_captured_logger?
       formatted_negated_failure_message(@captured_logger, @expected_hash)
@@ -30,6 +43,9 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
     end
   end
 
+  # Provide a description of what this matcher checks.
+  #
+  # @return [String] A human-readable description of the matcher.
   def description
     "have logged entry with #{expectation_description(@expected_hash)}"
   end

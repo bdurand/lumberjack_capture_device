@@ -67,10 +67,6 @@ module Lumberjack
         formatted
       end
 
-      def initialize(options = {})
-        super(options.merge(max_entries: 1_000_000))
-      end
-
       # Format a log entry or expectation hash into a more human readable format.
       #
       # @param expectation [Hash, Lumberjack::LogEntry] The expectation or log entry to format.
@@ -104,6 +100,13 @@ module Lumberjack
       end
     end
 
+    # Initialize a new CaptureDevice.
+    #
+    # @param options [Hash] Options to pass to the parent Test device.
+    def initialize(options = {})
+      super(options.merge(max_entries: 1_000_000))
+    end
+
     # Return all the captured entries that match the specified filters. These filters are
     # the same as described in the `include?` method.
     #
@@ -112,10 +115,11 @@ module Lumberjack
     # @param attributes [Hash, nil] A hash of attribute names to values to match against the log entries. The attributes
     #   will match nested attributes using dot notation (e.g. `foo.bar` will match an attribute with the structure
     #   `{foo: {bar: "value"}}`).
+    # @param progname [String, nil] The program name to match against the log entries.
     # @param limit [Integer, nil] The maximum number of entries to return. If nil, all matching entries
     #   will be returned.
     # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter.
-    # @param attributes [Hash, nil] Alias for the `attributes` parameter.
+    # @param tags [Hash, nil] Alias for the `attributes` parameter.
     # @return [Array<Lumberjack::LogEntry>] An array of log entries that match the specified filters.
     def extract(message: nil, severity: nil, attributes: nil, progname: nil, limit: nil, level: nil, tags: nil)
       matcher = LogEntryMatcher.new(message: message, severity: severity || level, attributes: attributes || tags, progname: progname)
@@ -143,18 +147,18 @@ module Lumberjack
     # Example:
     #
     # ```
-    # logs.include(level: :warn, message: /something happened/, attributes: {duration: instance_of(Float)})
+    # logs.include(level: :warn, message: /something happened/, attributes: {user: "john"})
     # ```
     #
-    # @param args [Hash] The filters to apply to the captured entries.
-    # @option args [String, Regexp] :message The message to match against the log entries.
-    # @option args [String, Symbol, Integer] :level The log level to match against the log entries.
-    # @option args [Hash] :attributes A hash of attribute names to values to match against the log entries. The attributes
+    # @param filters [Hash] The filters to apply to the captured entries.
+    # @option filters [String, Regexp] :message The message to match against the log entries.
+    # @option filters [String, Symbol, Integer] :level The log level to match against the log entries.
+    # @option filters [Hash] :attributes A hash of attribute names to values to match against the log entries. The attributes
     #   will match nested attributes using dot notation (e.g. `foo.bar` will match an attribute with the structure
     #   `{foo: {bar: "value"}}`).
-    # @option args [String] :progname The program name to match against the log entries.
-    # @option args [String, Symbol, Integer, nil] :level Alias for the `severity` parameter.
-    # @option args [Hash, nil] :tags Alias for the `attributes` parameter.
+    # @option filters [String] :progname The program name to match against the log entries.
+    # @option filters [String, Symbol, Integer, nil] :severity Alias for the `level` parameter.
+    # @option filters [Hash, nil] :tags Alias for the `attributes` parameter.
     # @return [Boolean] True if any entries match the specified filters, false otherwise.
     def include?(filters)
       munged_filters = {
@@ -176,7 +180,7 @@ module Lumberjack
     #   `{foo: {bar: "value"}}`).
     # @param progname [String, nil] The program name to match against the log entries.
     # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter.
-    # @param attributes [Hash, nil] Alias for the `attributes` parameter.
+    # @param tags [Hash, nil] Alias for the `attributes` parameter.
     # @return [Lumberjack::LogEntry]
     def match(message: nil, severity: nil, attributes: nil, progname: nil, level: nil, tags: nil)
       super(message: message, severity: severity || level, attributes: attributes || tags, progname: progname)
