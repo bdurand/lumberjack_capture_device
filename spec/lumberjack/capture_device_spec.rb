@@ -200,7 +200,7 @@ RSpec.describe Lumberjack::CaptureDevice do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar", foo: "bar", baz: {one: 1, two: [2, 22], three: nil})
         logger.warn("FOOBAR", foo: "bum")
-        logger.set_progname("TestProgname") do
+        logger.with_progname("TestProgname") do
           logger.info("baxbar", foo: "bar")
         end
       end

@@ -39,7 +39,7 @@ module Lumberjack
         begin
           logger.device = device
           logger.level = :debug
-          logger.formatter = Lumberjack::Formatter.empty
+          logger.formatter = Lumberjack::Formatter.new
           yield device
         ensure
           logger.device = save_device

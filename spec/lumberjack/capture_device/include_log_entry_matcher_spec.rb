@@ -8,7 +8,7 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
   let(:capture_device) do
     device = Lumberjack::CaptureDevice.new
     logger.device = device
-    logger.formatter = Lumberjack::Formatter.empty
+    logger.formatter = Lumberjack::Formatter.new
 
     # Add some test entries using the logger
     logger.info("test message")
