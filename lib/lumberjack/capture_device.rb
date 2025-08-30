@@ -114,7 +114,7 @@ module Lumberjack
     # @param severity [String, Symbol, Integer, nil] The severity to match against the log entries.
     # @param attributes [Hash, nil] A hash of attribute names to values to match against the log entries. The attributes
     #   will match nested attributes using dot notation (e.g. `foo.bar` will match an attribute with the structure
-    #   `{foo: {bar: "value"}}`).
+    #   +{foo: {bar: "value"}}+).
     # @param progname [String, nil] The program name to match against the log entries.
     # @param limit [Integer, nil] The maximum number of entries to return. If nil, all matching entries
     #   will be returned.
@@ -147,7 +147,7 @@ module Lumberjack
     # Example:
     #
     # ```
-    # logs.include(level: :warn, message: /something happened/, attributes: {user: "john"})
+    # logs.include(level: :warn, message: /something happened/, attributes: +{user: "john"}+)
     # ```
     #
     # @param filters [Hash] The filters to apply to the captured entries.
@@ -155,7 +155,7 @@ module Lumberjack
     # @option filters [String, Symbol, Integer] :level The log level to match against the log entries.
     # @option filters [Hash] :attributes A hash of attribute names to values to match against the log entries. The attributes
     #   will match nested attributes using dot notation (e.g. `foo.bar` will match an attribute with the structure
-    #   `{foo: {bar: "value"}}`).
+    #   +{foo: {bar: "value"}}+).
     # @option filters [String] :progname The program name to match against the log entries.
     # @option filters [String, Symbol, Integer, nil] :severity Alias for the `level` parameter.
     # @option filters [Hash, nil] :tags Alias for the `attributes` parameter.
@@ -177,7 +177,7 @@ module Lumberjack
     # @param severity [String, Symbol, Integer, nil] The log level to match against the log entries.
     # @param attributes [Hash, nil] A hash of attribute names to values to match against the log entries. The attributes
     #   will match nested attributes using dot notation (e.g. `foo.bar` will match an attribute with the structure
-    #   `{foo: {bar: "value"}}`).
+    #   +{foo: {bar: "value"}}+).
     # @param progname [String, nil] The program name to match against the log entries.
     # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter.
     # @param tags [Hash, nil] Alias for the `attributes` parameter.
