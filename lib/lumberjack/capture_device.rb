@@ -90,10 +90,10 @@ module Lumberjack
         message << "#{indent_str}progname: #{expectation["progname"].inspect}" if expectation.include?("progname")
         if expectation["attributes"].is_a?(Hash) && !expectation["attributes"].empty?
           attributes = Lumberjack::Utils.flatten_attributes(expectation["attributes"])
-          prefix = "attributes: "
+          prefix = "#{indent_str}attributes: "
           attributes.sort_by(&:first).each do |name, value|
             message << "#{prefix} #{name}: #{value.inspect}"
-            prefix = "#{indent_str}      "
+            prefix = "#{indent_str}#{" " * "attributes: ".length}"
           end
         end
         message.join("\n")
