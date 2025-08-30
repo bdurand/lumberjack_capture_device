@@ -65,17 +65,17 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
       "#{Lumberjack::CaptureDevice.formatted_expectation(expected_hash, indent: 2)}\n\n" \
       "Captured #{captured_logger.length} log #{(captured_logger.length == 1) ? "entry" : "entries"}"
 
+    closest_match = captured_logger.closest_match(**expected_hash)
+    if closest_match
+      message = "#{message}\n\nClosest match found:" \
+        "#{Lumberjack::CaptureDevice.formatted_expectation(closest_match, indent: 2)}"
+    end
+
     if captured_logger.length > 0
       message << "\n----------------------\n"
       captured_logger.each do |entry|
         message << "#{Lumberjack::CaptureDevice.formatted_entry(entry)}\n"
       end
-    end
-
-    closest_match = captured_logger.closest_match(**expected_hash)
-    if closest_match
-      message = "#{message}\n\nClosest match found:" \
-        "#{Lumberjack::CaptureDevice.formatted_expectation(closest_match, indent: 2)}"
     end
 
     message
