@@ -5,6 +5,12 @@ require_relative "../spec_helper"
 RSpec.describe Lumberjack::CaptureDevice do
   let(:logger) { Lumberjack::Logger.new(StringIO.new, level: :info) }
 
+  describe "VERSION" do
+    it "has a version number" do
+      expect(Lumberjack::CaptureDevice::VERSION).not_to be nil
+    end
+  end
+
   describe ".capture" do
     it "should capture log entries inside a block to a buffer" do
       buffer = nil

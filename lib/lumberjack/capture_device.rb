@@ -6,7 +6,7 @@ module Lumberjack
   # Lumberjack device for capturing log entries into memory to allow them to be inspected
   # for testing purposes.
   class CaptureDevice < Lumberjack::Device::Test
-    VERSION = ::File.read(::File.join(__dir__, "..", "..", "VERSION"))
+    VERSION = ::File.read(::File.join(__dir__, "..", "..", "VERSION")).strip.freeze
 
     include Enumerable
 
