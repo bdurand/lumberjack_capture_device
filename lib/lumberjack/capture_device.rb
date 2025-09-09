@@ -28,7 +28,7 @@ module Lumberjack
       # @example
       #   Lumberjack::CaptureDevice.capture(logger) do |logs|
       #     logger.info("This will be captured")
-      #     expect(logs).to include(level: :info, message: "This will be captured")
+      #     expect(logs).to include(severity: :info, message: "This will be captured")
       #   end
       #
       # @example
