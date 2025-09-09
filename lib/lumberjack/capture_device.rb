@@ -154,11 +154,8 @@ module Lumberjack
     # regular expression or matchers as the values here as well. attributes can also be nested to match
     # nested attributes.
     #
-    # Example:
-    #
-    # ```
-    # logs.include?(level: :warn, message: /something happened/, attributes: {user: "john"})
-    # ```
+    # @example
+    #   logs.include?(level: :warn, message: /something happened/, attributes: {user: "john"})
     #
     # @param filters [Hash] The filters to apply to the captured entries.
     # @option filters [String, Regexp] :message The message to match against the log entries.
