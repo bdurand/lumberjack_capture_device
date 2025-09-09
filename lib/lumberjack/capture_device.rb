@@ -6,10 +6,14 @@ module Lumberjack
   # Lumberjack device for capturing log entries into memory to allow them to be inspected
   # for testing purposes.
   class CaptureDevice < Lumberjack::Device::Test
+    # The version of the lumberjack_capture_device gem.
     VERSION = ::File.read(::File.join(__dir__, "..", "..", "VERSION")).strip.freeze
 
     include Enumerable
 
+    # @!attribute [r] buffer
+    #   The array of captured log entries.
+    #   @return [Array<Lumberjack::LogEntry>] The captured log entries.
     attr_reader :buffer
     class << self
       # Capture the entries written by the logger within a block. Within the block all log
@@ -198,7 +202,7 @@ module Lumberjack
 
     # Return true if the captured log entries match the specified level, message, and attributes.
     #
-    # For level, you can specified either a numeric constant (i.e. `Logger::WARN`) or a symbol
+    # For level, you can specify either a numeric constant (i.e. `Logger::WARN`) or a symbol
     # (i.e. `:warn`).
     #
     # For message you can specify a string to perform an exact match or a regular expression
@@ -246,7 +250,7 @@ module Lumberjack
     # @param progname [String, nil] The program name to match against the log entries.
     # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter.
     # @param tags [Hash, nil] Alias for the `attributes` parameter.
-    # @return [Lumberjack::LogEntry]
+    # @return [Lumberjack::LogEntry, nil] The first matching log entry, or nil if no match is found.
     def match(message: nil, severity: nil, attributes: nil, progname: nil, level: nil, tags: nil)
       super(message: message, severity: severity || level, attributes: attributes || tags, progname: progname)
     end
@@ -289,10 +293,15 @@ module Lumberjack
     end
 
     # Clears all captured log entries.
+    # 
+    # @return [void]
     def clear
       flush
     end
 
+    # Provide a detailed string representation showing all captured entries.
+    # 
+    # @return [String] A formatted string showing all captured log entries.
     def inspect
       message = +"<##{self.class.name} #{@buffer.size} #{(@buffer.size == 1) ? "entry" : "entries"} captured:"
       @buffer.each do |entry|
@@ -302,16 +311,27 @@ module Lumberjack
       message
     end
 
+    # Provide a simple string representation showing the count of captured entries.
+    # 
+    # @return [String] A brief description of the captured entries count.
     def to_s
       "<##{self.class.name} #{@buffer.size} #{(@buffer.size == 1) ? "entry" : "entries"} captured>"
     end
 
+    # Return the number of captured log entries.
+    # 
+    # @return [Integer] The number of captured entries.
     def length
       @buffer.length
     end
 
     alias_method :size, :length
 
+    # Iterate over each captured log entry.
+    # 
+    # @yield [entry] Block to execute for each captured entry.
+    # @yieldparam entry [Lumberjack::LogEntry] A captured log entry.
+    # @return [Array<Lumberjack::LogEntry>] The captured entries (when no block given).
     def each(&block)
       @buffer.each(&block)
     end
