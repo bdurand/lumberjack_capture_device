@@ -10,7 +10,6 @@ module Lumberjack
 
     include Enumerable
 
-    attr_reader :buffer
     class << self
       # Capture the entries written by the logger within a block. Within the block all log
       # entries will be written to a CaptureDevice rather than to the normal output for
@@ -122,18 +121,29 @@ module Lumberjack
     # @param tags [Hash, nil] Alias for the `attributes` parameter.
     # @return [Array<Lumberjack::LogEntry>] An array of log entries that match the specified filters.
     def extract(message: nil, severity: nil, attributes: nil, progname: nil, limit: nil, level: nil, tags: nil)
-      matcher = LogEntryMatcher.new(message: message, severity: severity || level, attributes: attributes || tags, progname: progname)
       matched = []
+      if severity.nil? && !level.nil?
+        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#extract(level)", "Lumberjack::CaptureDevice#extract level parameter has been renamed to severity")
+        severity = level
+      end
+      if attributes.nil? && !tags.nil?
+        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#extract(tags)", "Lumberjack::CaptureDevice#extract tags parameter has been renamed to attributes")
+        attributes = tags
+      end
+
+      matcher = LogEntryMatcher.new(message: message, severity: severity, attributes: attributes, progname: progname)
+
       entries.each do |entry|
         matched << entry if matcher.match?(entry)
         break if limit && matched.size >= limit
       end
+
       matched
     end
 
     # Return true if the captured log entries match the specified level, message, and attributes.
     #
-    # For level, you can specified either a numeric constant (i.e. `Logger::WARN`) or a symbol
+    # For level, you can specify either a numeric constant (i.e. `Logger::WARN`) or a symbol
     # (i.e. `:warn`).
     #
     # For message you can specify a string to perform an exact match or a regular expression
@@ -144,11 +154,8 @@ module Lumberjack
     # regular expression or matchers as the values here as well. attributes can also be nested to match
     # nested attributes.
     #
-    # Example:
-    #
-    # ```
-    # logs.include(level: :warn, message: /something happened/, attributes: +{user: "john"}+)
-    # ```
+    # @example
+    #   logs.include?(level: :warn, message: /something happened/, attributes: {user: "john"})
     #
     # @param filters [Hash] The filters to apply to the captured entries.
     # @option filters [String, Regexp] :message The message to match against the log entries.
@@ -181,7 +188,7 @@ module Lumberjack
     # @param progname [String, nil] The program name to match against the log entries.
     # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter.
     # @param tags [Hash, nil] Alias for the `attributes` parameter.
-    # @return [Lumberjack::LogEntry]
+    # @return [Lumberjack::LogEntry, nil] The first matching log entry, or nil if no match is found.
     def match(message: nil, severity: nil, attributes: nil, progname: nil, level: nil, tags: nil)
       super(message: message, severity: severity || level, attributes: attributes || tags, progname: progname)
     end
@@ -199,7 +206,7 @@ module Lumberjack
     # @param tags [Hash, nil] Alias for the `attributes` parameter.
     # @return [Lumberjack::LogEntry, nil] The log entry that most closely matches the filters, or nil if no entry meets minimum criteria.
     def closest_match(message: nil, severity: nil, attributes: nil, progname: nil, level: nil, tags: nil)
-      return nil if @buffer.empty?
+      return nil if length == 0
 
       severity ||= level
       attributes ||= tags
@@ -212,7 +219,7 @@ module Lumberjack
       best_entry = nil
       best_score = 0
 
-      @buffer.each do |entry|
+      entries.each do |entry|
         score = Lumberjack::CaptureDevice::EntryScore.calculate_match_score(entry, message, severity, attributes, progname)
         if score > best_score && score >= Lumberjack::CaptureDevice::EntryScore::MIN_SCORE_THRESHOLD
           best_score = score
@@ -224,29 +231,45 @@ module Lumberjack
     end
 
     # Clears all captured log entries.
+    #
+    # @return [void]
     def clear
       flush
     end
 
+    # Provide a detailed string representation showing all captured entries.
+    #
+    # @return [String] A formatted string showing all captured log entries.
     def inspect
-      message = +"<##{self.class.name} #{@buffer.size} #{(@buffer.size == 1) ? "entry" : "entries"} captured:"
-      @buffer.each do |entry|
+      message = +"<##{self.class.name} #{length} #{(length == 1) ? "entry" : "entries"} captured:"
+      entries.each do |entry|
         message << "\n  #{Lumberjack::CaptureDevice.formatted_entry(entry)}"
       end
       message << "\n>"
       message
     end
 
+    # Provide a simple string representation showing the count of captured entries.
+    #
+    # @return [String] A brief description of the captured entries count.
     def to_s
-      "<##{self.class.name} #{@buffer.size} #{(@buffer.size == 1) ? "entry" : "entries"} captured>"
+      "<##{self.class.name} #{length} #{(length == 1) ? "entry" : "entries"} captured>"
     end
 
+    # Return the number of captured log entries.
+    #
+    # @return [Integer] The number of captured entries.
     def length
       @buffer.length
     end
 
     alias_method :size, :length
 
+    # Iterate over each captured log entry.
+    #
+    # @yield [entry] Block to execute for each captured entry.
+    # @yieldparam entry [Lumberjack::LogEntry] A captured log entry.
+    # @return [Array<Lumberjack::LogEntry>] The captured entries (when no block given).
     def each(&block)
       @buffer.each(&block)
     end

@@ -15,7 +15,7 @@ RSpec.describe Lumberjack::CaptureDevice::EntryScore do
       logger.progname = "TestApp"
       logger.info("Service started", service: "test")
     end
-    device.buffer
+    device.entries
   end
 
   let(:entry_info) { entries[0] }      # "User logged in successfully"
