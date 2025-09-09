@@ -53,14 +53,14 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   private
 
   # Check if the captured logger is a valid CaptureDevice.
-  # 
+  #
   # @return [Boolean] True if the captured logger is a CaptureDevice.
   def valid_captured_logger?
     @captured_logger.is_a?(Lumberjack::CaptureDevice)
   end
 
   # Generate an error message for wrong object type.
-  # 
+  #
   # @param captured_logger [Object] The object that was passed instead of a CaptureDevice.
   # @return [String] An error message describing the type mismatch.
   def wrong_object_type_message(captured_logger)
@@ -68,7 +68,7 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   end
 
   # Generate a detailed failure message showing expected vs actual logs.
-  # 
+  #
   # @param captured_logger [Lumberjack::CaptureDevice] The capture device.
   # @param expected_hash [Hash] The expected log entry attributes.
   # @return [String] A formatted failure message with context.
@@ -94,7 +94,7 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   end
 
   # Generate a failure message for negated expectations.
-  # 
+  #
   # @param captured_logger [Lumberjack::CaptureDevice] The capture device.
   # @param expected_hash [Hash] The expected log entry attributes that should not be present.
   # @return [String] A formatted failure message for negated expectations.
@@ -112,7 +112,7 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   end
 
   # Create a human-readable description of the expected log entry attributes.
-  # 
+  #
   # @param expected_hash [Hash] The expected log entry attributes.
   # @return [String] A formatted description of the expected attributes.
   def expectation_description(expected_hash)

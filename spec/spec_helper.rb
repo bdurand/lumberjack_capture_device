@@ -12,3 +12,18 @@ RSpec.configure do |config|
   config.order = :random
   Kernel.srand config.seed
 end
+
+def silence_deprecations
+  save_warning = Warning[:deprecated]
+  save_verbose = $VERBOSE
+  begin
+    Warning[:deprecated] = false
+    $VERBOSE = false
+    begin
+      yield
+    ensure
+      Warning[:deprecated] = save_warning
+      $VERBOSE = save_verbose
+    end
+  end
+end

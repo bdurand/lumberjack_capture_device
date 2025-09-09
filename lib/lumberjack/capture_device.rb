@@ -130,13 +130,14 @@ module Lumberjack
         Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#extract(tags)", "Lumberjack::CaptureDevice#extract tags parameter has been renamed to attributes")
         attributes = tags
       end
-      
+
+      matcher = LogEntryMatcher.new(message: message, severity: severity, attributes: attributes, progname: progname)
+
       entries.each do |entry|
-        if entry_matches_filters?(entry, message, munged_severity, munged_attributes, progname)
-          matched << entry
-          break if limit && matched.size >= limit
-        end
+        matched << entry if matcher.match?(entry)
+        break if limit && matched.size >= limit
       end
+
       matched
     end
 
@@ -208,8 +209,7 @@ module Lumberjack
     # @param tags [Hash, nil] Alias for the `attributes` parameter.
     # @return [Lumberjack::LogEntry, nil] The log entry that most closely matches the filters, or nil if no entry meets minimum criteria.
     def closest_match(message: nil, severity: nil, attributes: nil, progname: nil, level: nil, tags: nil)
-      buffer = entries
-      return nil if buffer.empty?
+      return nil if length == 0
 
       severity ||= level
       attributes ||= tags
@@ -222,7 +222,7 @@ module Lumberjack
       best_entry = nil
       best_score = 0
 
-      buffer.each do |entry|
+      entries.each do |entry|
         score = Lumberjack::CaptureDevice::EntryScore.calculate_match_score(entry, message, severity, attributes, progname)
         if score > best_score && score >= Lumberjack::CaptureDevice::EntryScore::MIN_SCORE_THRESHOLD
           best_score = score
@@ -234,19 +234,18 @@ module Lumberjack
     end
 
     # Clears all captured log entries.
-    # 
+    #
     # @return [void]
     def clear
       flush
     end
 
     # Provide a detailed string representation showing all captured entries.
-    # 
+    #
     # @return [String] A formatted string showing all captured log entries.
     def inspect
-      buffer = entries
-      message = +"<##{self.class.name} #{buffer.size} #{(buffer.size == 1) ? "entry" : "entries"} captured:"
-      buffer.each do |entry|
+      message = +"<##{self.class.name} #{length} #{(length == 1) ? "entry" : "entries"} captured:"
+      entries.each do |entry|
         message << "\n  #{Lumberjack::CaptureDevice.formatted_entry(entry)}"
       end
       message << "\n>"
@@ -254,29 +253,28 @@ module Lumberjack
     end
 
     # Provide a simple string representation showing the count of captured entries.
-    # 
+    #
     # @return [String] A brief description of the captured entries count.
     def to_s
-      buffer = entries
-      "<##{self.class.name} #{buffer.size} #{(buffer.size == 1) ? "entry" : "entries"} captured>"
+      "<##{self.class.name} #{length} #{(length == 1) ? "entry" : "entries"} captured>"
     end
 
     # Return the number of captured log entries.
-    # 
+    #
     # @return [Integer] The number of captured entries.
     def length
-      entries.length
+      @buffer.length
     end
 
     alias_method :size, :length
 
     # Iterate over each captured log entry.
-    # 
+    #
     # @yield [entry] Block to execute for each captured entry.
     # @yieldparam entry [Lumberjack::LogEntry] A captured log entry.
     # @return [Array<Lumberjack::LogEntry>] The captured entries (when no block given).
     def each(&block)
-      entries.each(&block)
+      @buffer.each(&block)
     end
   end
 end

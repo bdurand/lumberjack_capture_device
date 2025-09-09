@@ -10,7 +10,7 @@ class Lumberjack::CaptureDevice::EntryScore
   class << self
     # Calculate the overall match score for an entry against all provided filters.
     # Returns a score between 0.0 and 1.0, where 1.0 represents a perfect match.
-    # 
+    #
     # @param entry [Lumberjack::LogEntry] The log entry to score.
     # @param message_filter [String, Regexp, nil] The message filter to match against.
     # @param severity_filter [Integer, nil] The severity level to match against.
@@ -74,7 +74,7 @@ class Lumberjack::CaptureDevice::EntryScore
 
     # Calculate score for any field value against a filter.
     # Returns a score between 0.0 and 1.0 based on how well the value matches the filter.
-    # 
+    #
     # @param value [Object] The value to match against the filter.
     # @param filter [String, Regexp, Object] The filter to match the value against.
     # @return [Float] A score between 0.0 and 1.0 indicating match quality.
@@ -107,7 +107,7 @@ class Lumberjack::CaptureDevice::EntryScore
 
     # Calculate proximity score based on log severity distance.
     # Provides partial scoring for severities that are close to the target.
-    # 
+    #
     # @param entry_severity [Integer] The severity level of the log entry.
     # @param filter_severity [Integer] The target severity level to match.
     # @return [Float] A score between 0.0 and 1.0 based on severity proximity.
@@ -124,7 +124,7 @@ class Lumberjack::CaptureDevice::EntryScore
     # Calculate score for attribute matching.
     # Compares entry attributes against filter attributes and returns a score
     # based on how many attributes match.
-    # 
+    #
     # @param entry_attributes [Hash] The attributes from the log entry.
     # @param attributes_filter [Hash] The attributes filter to match against.
     # @return [Float] A score between 0.0 and 1.0 based on attribute matches.
@@ -145,7 +145,7 @@ class Lumberjack::CaptureDevice::EntryScore
 
     # Calculate string similarity using a simple Levenshtein distance-based approach.
     # Returns a score between 0.0 and 1.0 where 1.0 is an exact match.
-    # 
+    #
     # @param str1 [String] The first string to compare.
     # @param str2 [String] The second string to compare.
     # @return [Float] A similarity score between 0.0 and 1.0.
@@ -176,7 +176,7 @@ class Lumberjack::CaptureDevice::EntryScore
     # Simple Levenshtein distance implementation.
     # Calculates the minimum number of single-character edits needed
     # to change one string into another.
-    # 
+    #
     # @param str1 [String] The first string.
     # @param str2 [String] The second string.
     # @return [Integer] The Levenshtein distance between the strings.
@@ -206,7 +206,7 @@ class Lumberjack::CaptureDevice::EntryScore
     end
 
     # Count the total number of attribute filters in a nested hash structure.
-    # 
+    #
     # @param attributes_filter [Hash] The attributes filter hash to count.
     # @param count [Integer] The current count (used for recursion).
     # @return [Integer] The total number of filters.
@@ -222,7 +222,7 @@ class Lumberjack::CaptureDevice::EntryScore
     end
 
     # Count the number of matched attributes in a nested structure.
-    # 
+    #
     # @param attributes [Hash] The log entry attributes to check.
     # @param attributes_filter [Hash] The filter attributes to match against.
     # @param count [Integer] The current count (used for recursion).
@@ -244,7 +244,7 @@ class Lumberjack::CaptureDevice::EntryScore
     end
 
     # Check if a value exactly matches the filter using the === operator.
-    # 
+    #
     # @param value [Object] The value to match.
     # @param filter [Object] The filter to match against.
     # @return [Boolean] True if the value matches the filter.
@@ -254,7 +254,7 @@ class Lumberjack::CaptureDevice::EntryScore
     end
 
     # Recursively convert all keys in a hash structure to strings.
-    # 
+    #
     # @param hash [Hash, Object] The hash to stringify or other object to return as-is.
     # @return [Hash, Object] The hash with string keys or the original object.
     def deep_stringify_keys(hash)
