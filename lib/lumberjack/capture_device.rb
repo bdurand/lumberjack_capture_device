@@ -140,67 +140,6 @@ module Lumberjack
       matched
     end
 
-    private
-
-    # Check if an entry matches the given filters.
-    # 
-    # @param entry [Lumberjack::LogEntry] The log entry to check.
-    # @param message [String, Regexp, nil] The message to match against.
-    # @param severity [String, Symbol, Integer, nil] The severity to match against.
-    # @param attributes [Hash, nil] The attributes to match against.
-    # @param progname [String, nil] The program name to match against.
-    # @return [Boolean] True if the entry matches all provided filters.
-    def entry_matches_filters?(entry, message, severity, attributes, progname)
-      return false if message && !match_field?(entry.message, message)
-      return false if severity && !match_severity?(entry.severity, severity)
-      return false if progname && !match_field?(entry.progname, progname)
-      return false if attributes && !match_attributes?(entry.attributes, attributes)
-      true
-    end
-
-    # Check if a field value matches a filter.
-    def match_field?(value, filter)
-      case filter
-      when String
-        value.to_s == filter
-      when Regexp
-        filter.match?(value.to_s)
-      else
-        filter === value
-      end
-    end
-
-    # Check if a severity matches a filter.
-    def match_severity?(entry_severity, filter)
-      expected_severity = begin
-        Lumberjack::Severity.coerce(filter)
-      rescue
-        filter
-      end
-      entry_severity == expected_severity
-    end
-
-    # Check if attributes match filters.
-    def match_attributes?(entry_attributes, filter_attributes)
-      return true unless filter_attributes.is_a?(Hash)
-      return false unless entry_attributes.is_a?(Hash)
-
-      expanded_filter = Lumberjack::Utils.expand_attributes(filter_attributes)
-      expanded_entry = Lumberjack::Utils.expand_attributes(entry_attributes)
-
-      expanded_filter.all? do |key, expected_value|
-        actual_value = expanded_entry[key]
-        case expected_value
-        when Regexp
-          expected_value.match?(actual_value.to_s)
-        else
-          expected_value === actual_value
-        end
-      end
-    end
-
-    public
-
     # Return true if the captured log entries match the specified level, message, and attributes.
     #
     # For level, you can specify either a numeric constant (i.e. `Logger::WARN`) or a symbol
