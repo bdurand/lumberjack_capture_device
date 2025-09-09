@@ -72,7 +72,7 @@ This will give you a `capture_logger` method and `include_log_entry` matcher. Th
 ```ruby
 describe MyClass do
   it "logs information" do
-    logs = capture_logger { MyClass.do_something }
+    logs = capture_logger(Rails.logger) { MyClass.do_something }
     expect(logs).to include_log_entry(message: "Something")
   end
 end

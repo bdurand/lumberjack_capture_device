@@ -1,13 +1,22 @@
 # frozen_string_literal: true
 
-# Class responsible for scoring and matching log entries against filters
+# Class responsible for scoring and matching log entries against filters.
+# This class provides fuzzy matching capabilities to find the best matching
+# log entry when exact matches are not available.
 class Lumberjack::CaptureDevice::EntryScore
   # Minimum score threshold for considering a match (30% match)
   MIN_SCORE_THRESHOLD = 0.3
 
   class << self
-    # Calculate the overall match score for an entry against all provided filters
-    # Returns a score between 0.0 and 1.0
+    # Calculate the overall match score for an entry against all provided filters.
+    # Returns a score between 0.0 and 1.0, where 1.0 represents a perfect match.
+    # 
+    # @param entry [Lumberjack::LogEntry] The log entry to score.
+    # @param message_filter [String, Regexp, nil] The message filter to match against.
+    # @param severity_filter [Integer, nil] The severity level to match against.
+    # @param attributes_filter [Hash, nil] The attributes hash to match against.
+    # @param progname_filter [String, nil] The program name to match against.
+    # @return [Float] A score between 0.0 and 1.0 indicating match quality.
     def calculate_match_score(entry, message_filter, severity_filter, attributes_filter, progname_filter)
       scores = []
       weights = []
@@ -63,8 +72,12 @@ class Lumberjack::CaptureDevice::EntryScore
       base_score
     end
 
-    # Calculate score for any field value against a filter
-    # Returns a score between 0.0 and 1.0 based on how well the value matches the filter
+    # Calculate score for any field value against a filter.
+    # Returns a score between 0.0 and 1.0 based on how well the value matches the filter.
+    # 
+    # @param value [Object] The value to match against the filter.
+    # @param filter [String, Regexp, Object] The filter to match the value against.
+    # @return [Float] A score between 0.0 and 1.0 indicating match quality.
     def calculate_field_score(value, filter)
       return 0.0 unless value && filter
 
@@ -92,7 +105,12 @@ class Lumberjack::CaptureDevice::EntryScore
       end
     end
 
-    # Calculate proximity score based on log severity distance
+    # Calculate proximity score based on log severity distance.
+    # Provides partial scoring for severities that are close to the target.
+    # 
+    # @param entry_severity [Integer] The severity level of the log entry.
+    # @param filter_severity [Integer] The target severity level to match.
+    # @return [Float] A score between 0.0 and 1.0 based on severity proximity.
     def severity_proximity_score(entry_severity, filter_severity)
       severity_diff = (entry_severity - filter_severity).abs
       case severity_diff
@@ -103,7 +121,13 @@ class Lumberjack::CaptureDevice::EntryScore
       end
     end
 
-    # Calculate score for attribute matching
+    # Calculate score for attribute matching.
+    # Compares entry attributes against filter attributes and returns a score
+    # based on how many attributes match.
+    # 
+    # @param entry_attributes [Hash] The attributes from the log entry.
+    # @param attributes_filter [Hash] The attributes filter to match against.
+    # @return [Float] A score between 0.0 and 1.0 based on attribute matches.
     def calculate_attributes_score(entry_attributes, attributes_filter)
       return 0.0 unless entry_attributes && attributes_filter.is_a?(Hash)
 
@@ -119,8 +143,12 @@ class Lumberjack::CaptureDevice::EntryScore
 
     private
 
-    # Calculate string similarity using a simple Levenshtein distance-based approach
-    # Returns a score between 0.0 and 1.0 where 1.0 is an exact match
+    # Calculate string similarity using a simple Levenshtein distance-based approach.
+    # Returns a score between 0.0 and 1.0 where 1.0 is an exact match.
+    # 
+    # @param str1 [String] The first string to compare.
+    # @param str2 [String] The second string to compare.
+    # @return [Float] A similarity score between 0.0 and 1.0.
     def string_similarity(str1, str2)
       return 1.0 if str1 == str2
       return 0.0 if str1.nil? || str2.nil? || str1.empty? || str2.empty?
@@ -145,7 +173,13 @@ class Lumberjack::CaptureDevice::EntryScore
       1.0 - (distance.to_f / max_length)
     end
 
-    # Simple Levenshtein distance implementation
+    # Simple Levenshtein distance implementation.
+    # Calculates the minimum number of single-character edits needed
+    # to change one string into another.
+    # 
+    # @param str1 [String] The first string.
+    # @param str2 [String] The second string.
+    # @return [Integer] The Levenshtein distance between the strings.
     def levenshtein_distance(str1, str2)
       return str2.length if str1.empty?
       return str1.length if str2.empty?
@@ -171,6 +205,11 @@ class Lumberjack::CaptureDevice::EntryScore
       matrix[str1.length][str2.length]
     end
 
+    # Count the total number of attribute filters in a nested hash structure.
+    # 
+    # @param attributes_filter [Hash] The attributes filter hash to count.
+    # @param count [Integer] The current count (used for recursion).
+    # @return [Integer] The total number of filters.
     def count_attribute_filters(attributes_filter, count = 0)
       attributes_filter.each do |_name, value_filter|
         if value_filter.is_a?(Hash)
@@ -182,6 +221,12 @@ class Lumberjack::CaptureDevice::EntryScore
       count
     end
 
+    # Count the number of matched attributes in a nested structure.
+    # 
+    # @param attributes [Hash] The log entry attributes to check.
+    # @param attributes_filter [Hash] The filter attributes to match against.
+    # @param count [Integer] The current count (used for recursion).
+    # @return [Integer] The number of matched attributes.
     def count_matched_attributes(attributes, attributes_filter, count = 0)
       return count unless attributes && attributes_filter
 
@@ -198,11 +243,20 @@ class Lumberjack::CaptureDevice::EntryScore
       count
     end
 
+    # Check if a value exactly matches the filter using the === operator.
+    # 
+    # @param value [Object] The value to match.
+    # @param filter [Object] The filter to match against.
+    # @return [Boolean] True if the value matches the filter.
     def exact_match?(value, filter)
       return true unless filter
       filter === value
     end
 
+    # Recursively convert all keys in a hash structure to strings.
+    # 
+    # @param hash [Hash, Object] The hash to stringify or other object to return as-is.
+    # @return [Hash, Object] The hash with string keys or the original object.
     def deep_stringify_keys(hash)
       if hash.is_a?(Hash)
         hash.each_with_object({}) do |(key, value), result|

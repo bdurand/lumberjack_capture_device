@@ -25,12 +25,12 @@ module Lumberjack
       # @example
       #   Lumberjack::CaptureDevice.capture(logger) do |logs|
       #     logger.info("This will be captured")
-      #     expect(logs).to include(severity: :info, message: "This will be captured")
+      #     expect(logs).to include(level: :info, message: "This will be captured")
       #   end
       #
       # @example
       #   logs = Lumberjack::CaptureDevice.capture(logger) { logger.info("This will be captured") }
-      #   expect(logs).to include(severity: :info, message: "This will be captured")
+      #   expect(logs).to include(level: :info, message: "This will be captured")
       def capture(logger)
         device = new
         save_device = logger.device
@@ -122,14 +122,79 @@ module Lumberjack
     # @param tags [Hash, nil] Alias for the `attributes` parameter.
     # @return [Array<Lumberjack::LogEntry>] An array of log entries that match the specified filters.
     def extract(message: nil, severity: nil, attributes: nil, progname: nil, limit: nil, level: nil, tags: nil)
-      matcher = LogEntryMatcher.new(message: message, severity: severity || level, attributes: attributes || tags, progname: progname)
       matched = []
-      entries.each do |entry|
-        matched << entry if matcher.match?(entry)
-        break if limit && matched.size >= limit
+      munged_severity = severity || level
+      munged_attributes = attributes || tags
+      
+      @buffer.each do |entry|
+        if entry_matches_filters?(entry, message, munged_severity, munged_attributes, progname)
+          matched << entry
+          break if limit && matched.size >= limit
+        end
       end
       matched
     end
+
+    private
+
+    # Check if an entry matches the given filters.
+    # 
+    # @param entry [Lumberjack::LogEntry] The log entry to check.
+    # @param message [String, Regexp, nil] The message to match against.
+    # @param severity [String, Symbol, Integer, nil] The severity to match against.
+    # @param attributes [Hash, nil] The attributes to match against.
+    # @param progname [String, nil] The program name to match against.
+    # @return [Boolean] True if the entry matches all provided filters.
+    def entry_matches_filters?(entry, message, severity, attributes, progname)
+      return false if message && !match_field?(entry.message, message)
+      return false if severity && !match_severity?(entry.severity, severity)
+      return false if progname && !match_field?(entry.progname, progname)
+      return false if attributes && !match_attributes?(entry.attributes, attributes)
+      true
+    end
+
+    # Check if a field value matches a filter.
+    def match_field?(value, filter)
+      case filter
+      when String
+        value.to_s == filter
+      when Regexp
+        filter.match?(value.to_s)
+      else
+        filter === value
+      end
+    end
+
+    # Check if a severity matches a filter.
+    def match_severity?(entry_severity, filter)
+      expected_severity = begin
+        Lumberjack::Severity.coerce(filter)
+      rescue
+        filter
+      end
+      entry_severity == expected_severity
+    end
+
+    # Check if attributes match filters.
+    def match_attributes?(entry_attributes, filter_attributes)
+      return true unless filter_attributes.is_a?(Hash)
+      return false unless entry_attributes.is_a?(Hash)
+
+      expanded_filter = Lumberjack::Utils.expand_attributes(filter_attributes)
+      expanded_entry = Lumberjack::Utils.expand_attributes(entry_attributes)
+
+      expanded_filter.all? do |key, expected_value|
+        actual_value = expanded_entry[key]
+        case expected_value
+        when Regexp
+          expected_value.match?(actual_value.to_s)
+        else
+          expected_value === actual_value
+        end
+      end
+    end
+
+    public
 
     # Return true if the captured log entries match the specified level, message, and attributes.
     #
@@ -147,7 +212,7 @@ module Lumberjack
     # Example:
     #
     # ```
-    # logs.include(level: :warn, message: /something happened/, attributes: +{user: "john"}+)
+    # logs.include?(level: :warn, message: /something happened/, attributes: {user: "john"})
     # ```
     #
     # @param filters [Hash] The filters to apply to the captured entries.
