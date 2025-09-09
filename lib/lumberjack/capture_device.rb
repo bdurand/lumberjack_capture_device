@@ -6,7 +6,6 @@ module Lumberjack
   # Lumberjack device for capturing log entries into memory to allow them to be inspected
   # for testing purposes.
   class CaptureDevice < Lumberjack::Device::Test
-    # The version of the lumberjack_capture_device gem.
     VERSION = ::File.read(::File.join(__dir__, "..", "..", "VERSION")).strip.freeze
 
     include Enumerable
@@ -34,7 +33,7 @@ module Lumberjack
       #
       # @example
       #   logs = Lumberjack::CaptureDevice.capture(logger) { logger.info("This will be captured") }
-      #   expect(logs).to include(level: :info, message: "This will be captured")
+      #   expect(logs).to include(severity: :info, message: "This will be captured")
       def capture(logger)
         device = new
         save_device = logger.device
