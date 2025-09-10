@@ -170,6 +170,7 @@ class Lumberjack::CaptureDevice::EntryScore
 
       # Convert distance to similarity score
       return 0.0 if max_length == 0
+
       1.0 - (distance.to_f / max_length)
     end
 
@@ -250,6 +251,7 @@ class Lumberjack::CaptureDevice::EntryScore
     # @return [Boolean] True if the value matches the filter.
     def exact_match?(value, filter)
       return true unless filter
+
       filter === value
     end
 
