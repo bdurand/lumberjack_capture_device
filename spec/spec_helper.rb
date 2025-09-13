@@ -5,7 +5,7 @@ require "stringio"
 require_relative("../lib/lumberjack_capture_device")
 require_relative("../lib/lumberjack/capture_device/rspec")
 
-Lumberjack.deprecation_mode = "raise"
+Lumberjack.deprecation_mode = :raise
 
 RSpec.configure do |config|
   config.warnings = true
