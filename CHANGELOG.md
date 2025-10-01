@@ -6,11 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 2.0.0
 
-## Changed
+### Changed
 
-- Depends on `lumberjack` 2.0 or greater
-- You can now use `level` and `severity` interchangeably when checking for log entry attributes. "Severity" is more correct and is the preferred term.
-- You can now use `attributes` instead of `tags` when checking for log entry attributes. "Attributes" is the preferred term.
+- Depends on `lumberjack` 2.0 or greater.
+- A lot of the functionality has been moved to `Lumberjack::Device::Test` in the `lumberjack` gem. The `Lumberjack::CaptureDevice` class now inherits from `Lumberjack::Device::Test` and adds some additional functionality on top of it.
+
+### Removed
+
+- The RSpec matcher `include_log_entry` has been moved to its own gem.
+- Entry scoring logic for closest match has been removed and is now handled by the `lumberjack` gem.
+
+### Deprecated
+
+- The `level` parameter on `include?`, `match`, `extract`, and `closest_match` is deprecated. Use `severity` instead. The `level` parameter will be removed in version 2.1 but will continue to work as an alias for `severity` until then.
+- The `tags` parameter on `include?`, `match`, `extract`, and `closest_match` is deprecated. Use `attributes` instead. The `tags` parameter will be removed in version 2.1 but will continue to work as an alias for `attributes` until then
 
 ## 1.2.2
 

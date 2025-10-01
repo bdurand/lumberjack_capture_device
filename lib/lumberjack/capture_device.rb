@@ -47,56 +47,6 @@ module Lumberjack
         end
         device
       end
-
-      # Helper method to format a log entry for display.
-      #
-      # @param entry [Lumberjack::LogEntry] The log entry to format.
-      # @param indent [Integer] The indentation to prefix on every line.
-      # @return [String] The formatted log entry.
-      def formatted_entry(entry, indent: 0)
-        indent_str = " " * indent
-        timestamp = entry.time.strftime("%Y-%m-%d %H:%M:%S")
-        formatted = +"#{indent_str}#{timestamp} #{entry.severity_label}: #{entry.message}"
-        formatted << "\n#{indent_str}  progname: #{entry.progname}" if entry.progname.to_s != ""
-        if entry.attributes && !entry.attributes.empty?
-          Lumberjack::Utils.flatten_attributes(entry.attributes).to_a.sort_by(&:first).each do |name, value|
-            formatted << "\n#{indent_str}  #{name}: #{value}"
-          end
-        end
-        formatted
-      end
-
-      # Format a log entry or expectation hash into a more human readable format.
-      #
-      # @param expectation [Hash, Lumberjack::LogEntry] The expectation or log entry to format.
-      # @return [String] A formatted string representation of the expectation or log entry.
-      def formatted_expectation(expectation, indent: 0)
-        if expectation.is_a?(Lumberjack::LogEntry)
-          expectation = {
-            "severity" => expectation.severity_label,
-            "message" => expectation.message,
-            "progname" => expectation.progname,
-            "attributes" => expectation.attributes
-          }
-        end
-
-        expectation = expectation.transform_keys(&:to_s).compact
-
-        message = []
-        indent_str = " " * indent
-        message << "#{indent_str}severity: #{expectation["severity"].inspect}" if expectation.include?("severity")
-        message << "#{indent_str}message: #{expectation["message"].inspect}" if expectation.include?("message")
-        message << "#{indent_str}progname: #{expectation["progname"].inspect}" if expectation.include?("progname")
-        if expectation["attributes"].is_a?(Hash) && !expectation["attributes"].empty?
-          attributes = Lumberjack::Utils.flatten_attributes(expectation["attributes"])
-          prefix = "#{indent_str}attributes: "
-          attributes.sort_by(&:first).each do |name, value|
-            message << "#{prefix} #{name}: #{value.inspect}"
-            prefix = "#{indent_str}#{" " * "attributes: ".length}"
-          end
-        end
-        message.join("\n")
-      end
     end
 
     # Initialize a new CaptureDevice.
@@ -159,15 +109,23 @@ module Lumberjack
     #
     # @param filters [Hash] The filters to apply to the captured entries.
     # @option filters [String, Regexp] :message The message to match against the log entries.
-    # @option filters [String, Symbol, Integer] :level The log level to match against the log entries.
+    # @option filters [String, Symbol, Integer] :severity The log level to match against the log entries.
     # @option filters [Hash] :attributes A hash of attribute names to values to match against the log entries. The attributes
     #   will match nested attributes using dot notation (e.g. `foo.bar` will match an attribute with the structure
     #   +{foo: {bar: "value"}}+).
     # @option filters [String] :progname The program name to match against the log entries.
-    # @option filters [String, Symbol, Integer, nil] :severity Alias for the `level` parameter.
-    # @option filters [Hash, nil] :tags Alias for the `attributes` parameter.
+    # @option filters [String, Symbol, Integer, nil] :level Alias for the `severity` option. This option is deprecated.
+    # @option filters [Hash, nil] :tags Alias for the `attributes` option. This option is deprecated.
     # @return [Boolean] True if any entries match the specified filters, false otherwise.
     def include?(filters)
+      if filters.include?(:level)
+        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#include?(level)", "Lumberjack::CaptureDevice#include? level option has been renamed to severity; it will be removed in version 2.1.")
+      end
+
+      if filters.include?(:tags)
+        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#include?(tags)", "Lumberjack::CaptureDevice#include? tags option has been renamed to attributes; it will be removed in version 2.1.")
+      end
+
       munged_filters = {
         message: filters[:message],
         severity: filters[:severity] || filters[:level],
@@ -186,10 +144,17 @@ module Lumberjack
     #   will match nested attributes using dot notation (e.g. `foo.bar` will match an attribute with the structure
     #   +{foo: {bar: "value"}}+).
     # @param progname [String, nil] The program name to match against the log entries.
-    # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter.
-    # @param tags [Hash, nil] Alias for the `attributes` parameter.
+    # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter. This parameter is deprecated.
+    # @param tags [Hash, nil] Alias for the `attributes` parameter. This parameter is deprecated.
     # @return [Lumberjack::LogEntry, nil] The first matching log entry, or nil if no match is found.
     def match(message: nil, severity: nil, attributes: nil, progname: nil, level: nil, tags: nil)
+      unless level.nil?
+        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#match(level)", "Lumberjack::CaptureDevice#match level parameter has been renamed to severity; it will be removed in version 2.1.")
+      end
+      unless tags.nil?
+        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#match(tags)", "Lumberjack::CaptureDevice#match tags parameter has been renamed to attributes; it will be removed in version 2.1.")
+      end
+
       super(message: message, severity: severity || level, attributes: attributes || tags, progname: progname)
     end
 
@@ -208,26 +173,19 @@ module Lumberjack
     def closest_match(message: nil, severity: nil, attributes: nil, progname: nil, level: nil, tags: nil)
       return nil if length == 0
 
-      severity ||= level
-      attributes ||= tags
-
-      exact_match = match(message: message, severity: severity, attributes: attributes, progname: progname)
-      return exact_match if exact_match
-
-      severity = Lumberjack::Severity.coerce(severity) if severity
-
-      best_entry = nil
-      best_score = 0
-
-      entries.each do |entry|
-        score = Lumberjack::CaptureDevice::EntryScore.calculate_match_score(entry, message, severity, attributes, progname)
-        if score > best_score && score >= Lumberjack::CaptureDevice::EntryScore::MIN_SCORE_THRESHOLD
-          best_score = score
-          best_entry = entry
-        end
+      unless level.nil?
+        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#closest_match(level)", "Lumberjack::CaptureDevice#closest_match level parameter has been renamed to severity; it will be removed in version 2.1.")
+      end
+      unless tags.nil?
+        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#closest_match(tags)", "Lumberjack::CaptureDevice#closest_match tags parameter has been renamed to attributes; it will be removed in version 2.1.")
       end
 
-      best_entry
+      super(
+        message: message,
+        severity: severity || level,
+        attributes: attributes || tags,
+        progname: progname
+      )
     end
 
     # Clears all captured log entries.
@@ -275,6 +233,3 @@ module Lumberjack
     end
   end
 end
-
-require_relative "capture_device/entry_score"
-require_relative "capture_device/include_log_entry_matcher"
