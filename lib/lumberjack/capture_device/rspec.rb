@@ -2,7 +2,7 @@
 
 require_relative "../capture_device"
 require "rspec"
-require "lumberjack_rspec"
+require "lumberjack/rspec/include_log_entry_matcher"
 
 # RSpec helper methods for working with CaptureDevice.
 module Lumberjack::CaptureDevice::RSpec
@@ -28,6 +28,6 @@ module Lumberjack::CaptureDevice::RSpec
   end
 end
 
-RSpec.configure do |config|
+::RSpec.configure do |config|
   config.include Lumberjack::CaptureDevice::RSpec
 end

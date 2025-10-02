@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "lumberjack"
+require "lumberjack_rspec"
 
 module Lumberjack
   # Lumberjack device for capturing log entries into memory to allow them to be inspected
@@ -9,6 +10,9 @@ module Lumberjack
     VERSION = ::File.read(::File.join(__dir__, "..", "..", "VERSION")).strip.freeze
 
     include Enumerable
+
+    # TODO: remove when this deprecated class is removed.
+    autoload :IncludeLogEntryMatcher, "lumberjack/capture_device/include_log_entry_matcher"
 
     class << self
       # Capture the entries written by the logger within a block. Within the block all log
