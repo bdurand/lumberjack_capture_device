@@ -42,12 +42,12 @@ module Lumberjack
         begin
           logger.device = device
           logger.level = :debug
-          logger.formatter = Lumberjack::Formatter.new
+          # logger.formatter = Lumberjack::Formatter.new
           yield device
         ensure
           logger.device = save_device
           logger.level = save_level
-          logger.formatter = save_formatter
+          # logger.formatter = save_formatter
         end
         device
       end
@@ -203,11 +203,14 @@ module Lumberjack
     #
     # @return [String] A formatted string showing all captured log entries.
     def inspect
-      message = +"<##{self.class.name} #{length} #{(length == 1) ? "entry" : "entries"} captured:"
+      message = +"<##{self.class.name} #{length} #{(length == 1) ? "entry" : "entries"} captured:\n"
+      template = Lumberjack::TestLogTemplate.new
       entries.each do |entry|
-        message << "\n  #{Lumberjack::CaptureDevice.formatted_entry(entry)}"
+        formatted = template.call(entry).split("\n").collect { |line| "  #{line}" }.join("\n")
+        message << formatted
+        message << "\n"
       end
-      message << "\n>"
+      message << ">"
       message
     end
 
