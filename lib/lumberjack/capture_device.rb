@@ -204,7 +204,7 @@ module Lumberjack
     # @return [String] A formatted string showing all captured log entries.
     def inspect
       message = +"<##{self.class.name} #{length} #{(length == 1) ? "entry" : "entries"} captured:\n"
-      template = Lumberjack::TestLogTemplate.new
+      template = Lumberjack::LocalLogTemplate.new
       entries.each do |entry|
         formatted = template.call(entry).split("\n").collect { |line| "  #{line}" }.join("\n")
         message << formatted
