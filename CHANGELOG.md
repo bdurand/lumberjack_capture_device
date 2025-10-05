@@ -6,11 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 2.0.0
 
-## Changed
+### Added
 
-- Depends on `lumberjack` 2.0 or greater
-- You can now use `level` and `severity` interchangeably when checking for log entry attributes. "Severity" is more correct and is the preferred term.
-- You can now use `attributes` instead of `tags` when checking for log entry attributes. "Attributes" is the preferred term.
+- Captured log entries are now passed through to the underlying logging device when the capture block is finished. This can be disabled by passing `write_to_original: false` to the `capture` method. You can then write the captured entries to the underlying device manually by calling `write_to_underlying_device`.
+- Added `capture_logger_around_example` RSpec helper method to simplify capturing log entries in an `around` hook.
+
+### Changed
+
+- Depends on `lumberjack` 2.0 or greater.
+
+### Deprecated
+
+- The `:level` and `:tags` options on the matching methods (`include?`, `match`, `closest_match`, and `extract`) has been deprecated in favor of `:severity` and `:attributes`.
 
 ## 1.2.2
 

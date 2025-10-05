@@ -7,28 +7,30 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   # @param expected_hash [Hash] Expected log entry attributes to match against.
   def initialize(expected_hash)
     @expected_hash = expected_hash.transform_keys(&:to_sym)
-    @captured_logger = nil
+    @logger = nil
   end
 
-  # Check if the captured logger contains a log entry matching the expected attributes.
+  # Check if the logger contains a log entry matching the expected attributes.
   #
-  # @param actual [Lumberjack::CaptureDevice] The capture device to check.
+  # @param actual [Lumberjack::Logger, Lumberjack::ForkedLogger] The logger to check. The logger must be using
+  #   a Lumberjack::Device::Test device.
   # @return [Boolean] True if a matching log entry is found.
   def matches?(actual)
-    @captured_logger = actual
-    return false unless valid_captured_logger?
+    @logger = actual
+    return false unless valid_logger?
 
-    @captured_logger.include?(@expected_hash)
+    device = @logger.is_a?(Lumberjack::Device::Test) ? @logger : @logger.device
+    device.include?(@expected_hash)
   end
 
   # Generate a failure message when the matcher fails.
   #
   # @return [String] A formatted failure message.
   def failure_message
-    if valid_captured_logger?
-      formatted_failure_message(@captured_logger, @expected_hash)
+    if valid_logger?
+      formatted_failure_message(@logger, @expected_hash)
     else
-      wrong_object_type_message(@captured_logger)
+      wrong_object_type_message(@logger)
     end
   end
 
@@ -36,10 +38,10 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   #
   # @return [String] A formatted failure message for negated expectations.
   def failure_message_when_negated
-    if valid_captured_logger?
-      formatted_negated_failure_message(@captured_logger, @expected_hash)
+    if valid_logger?
+      formatted_negated_failure_message(@logger, @expected_hash)
     else
-      wrong_object_type_message(@captured_logger)
+      wrong_object_type_message(@logger)
     end
   end
 
@@ -52,41 +54,52 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
 
   private
 
-  # Check if the captured logger is a valid CaptureDevice.
+  # Check if the logger is using a valid Lumberjack::Device::Test device.
   #
-  # @return [Boolean] True if the captured logger is a CaptureDevice.
-  def valid_captured_logger?
-    @captured_logger.is_a?(Lumberjack::CaptureDevice)
+  # @return [Boolean] True if the logger is a Lumberjack::Device::Test.
+  def valid_logger?
+    return true if @logger.is_a?(Lumberjack::Device::Test)
+    return false unless @logger.respond_to?(:device)
+
+    @logger.device.is_a?(Lumberjack::Device::Test)
   end
 
   # Generate an error message for wrong object type.
   #
-  # @param captured_logger [Object] The object that was passed instead of a CaptureDevice.
+  # @param logger [Object] The object that was passed instead of a Lumberjack::Device::Test.
   # @return [String] An error message describing the type mismatch.
-  def wrong_object_type_message(captured_logger)
-    "Expected a Lumberjack::CaptureDevice object, but received a #{captured_logger.class}."
+  def wrong_object_type_message(logger)
+    unless logger.respond_to?(:device)
+      return "Expected a Lumberjack::Logger object, but received a #{logger.class}."
+    end
+
+    device = logger.device
+    "Expected logger device to be a Lumberjack::Device::Test, but it is a #{device.class}."
   end
 
   # Generate a detailed failure message showing expected vs actual logs.
   #
-  # @param captured_logger [Lumberjack::CaptureDevice] The capture device.
+  # @param logger_or_device [Lumberjack::Device::Test] The logger device.
   # @param expected_hash [Hash] The expected log entry attributes.
   # @return [String] A formatted failure message with context.
-  def formatted_failure_message(captured_logger, expected_hash)
+  def formatted_failure_message(logger_or_device, expected_hash)
+    device = logger_or_device.respond_to?(:device) ? logger_or_device.device : logger_or_device
     message = +"expected logs to include entry:\n" \
-      "#{Lumberjack::CaptureDevice.formatted_expectation(expected_hash, indent: 2)}"
+      "#{Lumberjack::Device::Test.formatted_expectation(expected_hash, indent: 2)}"
 
-    closest_match = captured_logger.closest_match(**expected_hash)
+    closest_match = device.closest_match(**expected_hash)
     if closest_match
       message << "\n\nClosest match found:" \
-        "#{Lumberjack::CaptureDevice.formatted_expectation(closest_match, indent: 2)}"
+        "#{Lumberjack::Device::Test.formatted_expectation(closest_match, indent: 2)}"
     end
 
-    message << "\n\nCaptured #{captured_logger.length} log #{(captured_logger.length == 1) ? "entry" : "entries"}"
-    if captured_logger.length > 0
+    entries = device.entries
+    message << "\n\nLogged #{entries.length} #{(entries.length == 1) ? "entry" : "entries"}"
+    if entries.length > 0
       message << "\n----------------------\n"
-      captured_logger.each do |entry|
-        message << "#{Lumberjack::CaptureDevice.formatted_entry(entry)}\n"
+      template = Lumberjack::LocalLogTemplate.new
+      entries.each do |entry|
+        message << "#{template.call(entry)}\n"
       end
     end
 
@@ -95,17 +108,18 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
 
   # Generate a failure message for negated expectations.
   #
-  # @param captured_logger [Lumberjack::CaptureDevice] The capture device.
+  # @param logger_or_device [Lumberjack::Device::Test] The logger to check.
   # @param expected_hash [Hash] The expected log entry attributes that should not be present.
   # @return [String] A formatted failure message for negated expectations.
-  def formatted_negated_failure_message(captured_logger, expected_hash)
+  def formatted_negated_failure_message(logger_or_device, expected_hash)
+    device = logger_or_device.respond_to?(:device) ? logger_or_device.device : logger_or_device
     message = "expected logs not to include entry:\n" \
-      "#{Lumberjack::CaptureDevice.formatted_expectation(expected_hash, indent: 2)}"
+      "#{Lumberjack::Device::Test.formatted_expectation(expected_hash, indent: 2)}"
 
-    match = captured_logger.match(**expected_hash)
+    match = device.match(**expected_hash)
     if match
       message = "#{message}\n\nFound entry:\n" \
-        "#{Lumberjack::CaptureDevice.formatted_expectation(match, indent: 2)}"
+        "#{Lumberjack::Device::Test.formatted_expectation(match, indent: 2)}"
     end
 
     message

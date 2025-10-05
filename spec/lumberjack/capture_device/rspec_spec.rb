@@ -81,7 +81,7 @@ RSpec.describe "rspec matchers" do
         }.to raise_error(RSpec::Expectations::ExpectationNotMetError) do |error|
           expect(error.message).to include("expected logs to include entry")
           expect(error.message).to include("expected message")
-          expect(error.message).to include("Captured 1 log entry")
+          expect(error.message).to include("Logged 1 entry")
           expect(error.message).to include("actual message")
         end
       end
@@ -102,7 +102,7 @@ RSpec.describe "rspec matchers" do
         expect {
           expect("not a logger").to include_log_entry(severity: :info, message: "test")
         }.to raise_error(RSpec::Expectations::ExpectationNotMetError) do |error|
-          expect(error.message).to include("Expected a Lumberjack::CaptureDevice object, but received a String")
+          expect(error.message).to include("Expected a Lumberjack::Logger object, but received a String")
         end
       end
 
@@ -110,7 +110,7 @@ RSpec.describe "rspec matchers" do
         expect {
           expect(nil).to include_log_entry(severity: :info, message: "test")
         }.to raise_error(RSpec::Expectations::ExpectationNotMetError) do |error|
-          expect(error.message).to include("Expected a Lumberjack::CaptureDevice object, but received a NilClass")
+          expect(error.message).to include("Expected a Lumberjack::Logger object, but received a NilClass")
         end
       end
 

@@ -37,8 +37,37 @@ module Lumberjack::CaptureDevice::RSpec
   #     Rails.logger.info("Test message")
   #   end
   #   expect(logs).to include_log_entry(level: :info, message: "Test message")
-  def capture_logger(logger, &block)
-    Lumberjack::CaptureDevice.capture(logger, &block)
+  def capture_logger(logger, write_to_original: true, &block)
+    Lumberjack::CaptureDevice.capture(logger, write_to_original: write_to_original, &block)
+  end
+
+  # RSpec around hook to automatically capture logs for each example. The captured logs are only
+  # written to the original logger if the example fails. This helps keep the logs more usable for
+  # debugging test failures since it removes all the noise from passing tests.
+  #
+  # This is designed for CI environments where you can save the logs as artifacts of the test run.
+  #
+  # @param logger [Lumberjack::Logger] The logger to capture entries for.
+  # @param example [RSpec::Core::Example] The current RSpec example.
+  #
+  # @example Capture logs for a Rails application
+  #  # In your spec_helper.rb or rails_helper.rb
+  #  RSpec.configure do |config|
+  #    config.around do |example|
+  #      capture_logger_around_example(Rails.logger, example)
+  #    end
+  #  end
+  def capture_logger_around_example(logger, example)
+    captured_device = capture_logger(logger, write_to_original: false) do |logs|
+      example.metadata[:captured_logs] = logs
+      example.run
+    end
+
+    if example.exception
+      logger.tag(rspec: {source_location: example.source_location, description: example.metadata[:description]}) do
+        captured_device.write_to(logger.device)
+      end
+    end
   end
 end
 
