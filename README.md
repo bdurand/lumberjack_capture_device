@@ -78,6 +78,26 @@ describe MyClass do
 end
 ```
 
+You can also set up log capturing around each example with the `capture_logger_around_example` method.
+
+```ruby
+describe MyClass do
+  around do |example|
+    capture_logger_around_example(Rails.logger, example)
+  end
+
+  it "logs information" do
+    MyClass.do_something
+    expect(Rails.logger).to include_log_entry(message: "Something")
+  end
+end
+```
+
+> [!TIP]
+> Add `capture_logger_around_example` as a global `around` hook in your RSpec configuration to automatically capture log entries for every example.
+>
+> This will also suppress all log output during tests unless an example fails which can reduce noise in the logs from tests that don't fail. This is especially useful in CI environments where you can save the logs as an artifact for failed test runs.
+
 ## Installation
 
 Add this line to your application's Gemfile:
