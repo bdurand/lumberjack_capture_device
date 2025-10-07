@@ -58,14 +58,13 @@ module Lumberjack::CaptureDevice::RSpec
   #    end
   #  end
   def capture_logger_around_example(logger, example)
-    captured_device = capture_logger(logger, write_to_original: false) do |logs|
-      example.metadata[:captured_logs] = logs
+    capture_logger(logger, write_to_original: false) do |captured_device|
       example.run
-    end
 
-    if example.exception
-      logger.tag(rspec: {source_location: example.source_location, description: example.metadata[:description]}) do
-        captured_device.write_to(logger.device)
+      if example.exception
+        logger.tag(rspec: {source_location: example.source_location, description: example.metadata[:description]}) do
+          captured_device.write_to_underlying_device
+        end
       end
     end
   end

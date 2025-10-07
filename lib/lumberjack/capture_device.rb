@@ -10,7 +10,6 @@ module Lumberjack
 
     require_relative "capture_device/include_log_entry_matcher"
 
-
     include Enumerable
 
     class << self
@@ -54,6 +53,11 @@ module Lumberjack
         device
       end
     end
+
+    # The original device from the logger before capture started.
+    #
+    # @return [Lumberjack::Device, nil] The original device, or nil if none was set.
+    attr_reader :underlying_device
 
     # Initialize a new CaptureDevice.
     #
