@@ -199,13 +199,6 @@ module Lumberjack
       )
     end
 
-    # Clears all captured log entries.
-    #
-    # @return [void]
-    def clear
-      flush
-    end
-
     # Write the captured log entries to the underlying device.
     #
     # @return [void]
