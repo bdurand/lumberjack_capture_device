@@ -84,6 +84,15 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   # @return [String] A formatted failure message with context.
   def formatted_failure_message(logger_or_device, expected_hash)
     device = logger_or_device.respond_to?(:device) ? logger_or_device.device : logger_or_device
+
+    # Handle deprecated keys
+    if expected_hash.include?(:level) && !expected_hash.include?(:severity)
+      expected_hash = expected_hash.merge(severity: expected_hash[:level])
+    end
+    if expected_hash.include?(:tags) && !expected_hash.include?(:attributes)
+      expected_hash = expected_hash.merge(attributes: expected_hash[:tags])
+    end
+
     message = +"expected logs to include entry:\n" \
       "#{Lumberjack::Device::Test.formatted_expectation(expected_hash, indent: 2)}"
 
