@@ -44,17 +44,17 @@ logs = Lumberjack::CaptureDevice.capture(Rails.logger) { do_something }
 assert(logs.include?(level: :info, message: "Something happened"))
 ```
 
-You can filter the logs on level, message, and tags.
+You can filter the logs on level, message, and attributes.
 
 - The level option can take either a label (i.e. `:warn`) or a constant (i.e. `Logger::WARN`).
 - The message filter can be either an exact string or a regular expression, or any matcher supported by your test library.
-- The tags argument can match tags with a Hash mapping tag names to the matcher values. If tags are nested, you can use dot notation on tag names to reference nested tags.
+- The attributes argument can match attributes with a Hash mapping attribute names to the matcher values. If attributes are nested, you can use dot notation on attribute names to reference nested attributes.
 
 ```ruby
 expect(logs).to include(level: :info, message: /something/i)
-expect(logs).to include(level: Logger::INFO, tags: {foo: "bar"})
-expect(logs).to include(tags: {foo: anything, count: {one: 1}})
-expect(logs).to include(tags: {foo: anything, "count.one" => 1})
+expect(logs).to include(level: Logger::INFO, attributes: {foo: "bar"})
+expect(logs).to include(attributes: {foo: anything, count: {one: 1}})
+expect(logs).to include(attributes: {foo: anything, "count.one" => 1})
 ```
 
 You can also use the `Lumberjack::CaptureDevice#extract` method with the same arguments as used by `include?` to extract all log entries that match the filters. You can get all of the log entries with `Lumberjack::CaptureDevice#buffer`.
@@ -72,11 +72,31 @@ This will give you a `capture_logger` method and `include_log_entry` matcher. Th
 ```ruby
 describe MyClass do
   it "logs information" do
-    logs = capture_logger { MyClass.do_something }
+    logs = capture_logger(Rails.logger) { MyClass.do_something }
     expect(logs).to include_log_entry(message: "Something")
   end
 end
 ```
+
+You can also set up log capturing around each example with the `capture_logger_around_example` method.
+
+```ruby
+describe MyClass do
+  around do |example|
+    capture_logger_around_example(Rails.logger, example)
+  end
+
+  it "logs information" do
+    MyClass.do_something
+    expect(Rails.logger).to include_log_entry(message: "Something")
+  end
+end
+```
+
+> [!TIP]
+> Add `capture_logger_around_example` as a global `around` hook in your RSpec configuration to automatically capture log entries for every example.
+>
+> This will also suppress all log output during tests unless an example fails which can reduce noise in the logs from tests that don't fail. This is especially useful in CI environments where you can save the logs as an artifact for failed test runs.
 
 ## Installation
 

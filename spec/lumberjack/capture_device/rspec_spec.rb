@@ -3,7 +3,7 @@
 require_relative "../../spec_helper"
 
 RSpec.describe "rspec matchers" do
-  let(:logger) { Lumberjack::Logger.new(StringIO.new, level: :debug) }
+  let(:logger) { Lumberjack::Logger.new(StringIO.new, severity: :debug) }
 
   describe "include_log_entry matcher" do
     describe "when applied to a captured logger" do
@@ -13,8 +13,8 @@ RSpec.describe "rspec matchers" do
           logger.error("error occurred")
         end
 
-        expect(logs).to include_log_entry(level: :info, message: "test message")
-        expect(logs).to include_log_entry(level: :error, message: "error occurred")
+        expect(logs).to include_log_entry(severity: :info, message: "test message")
+        expect(logs).to include_log_entry(severity: :error, message: "error occurred")
       end
 
       it "does not match when the expected log entry does not exist" do
@@ -22,8 +22,8 @@ RSpec.describe "rspec matchers" do
           logger.info("test message")
         end
 
-        expect(logs).not_to include_log_entry(level: :error, message: "test message")
-        expect(logs).not_to include_log_entry(level: :info, message: "different message")
+        expect(logs).not_to include_log_entry(severity: :error, message: "test message")
+        expect(logs).not_to include_log_entry(severity: :info, message: "different message")
       end
 
       it "matches with partial criteria" do
@@ -31,11 +31,11 @@ RSpec.describe "rspec matchers" do
           logger.warn("warning message", user_id: 123, action: "login")
         end
 
-        expect(logs).to include_log_entry(level: :warn)
+        expect(logs).to include_log_entry(severity: :warn)
         expect(logs).to include_log_entry(message: "warning message")
         expect(logs).to include_log_entry(message: /warning/)
-        expect(logs).to include_log_entry(tags: {user_id: 123})
-        expect(logs).to include_log_entry(tags: {action: "login"})
+        expect(logs).to include_log_entry(attributes: {user_id: 123})
+        expect(logs).to include_log_entry(attributes: {action: "login"})
       end
 
       it "matches with regular expressions" do
@@ -43,21 +43,21 @@ RSpec.describe "rspec matchers" do
           logger.info("User 123 logged in successfully")
         end
 
-        expect(logs).to include_log_entry(level: :info, message: /User \d+ logged in/)
-        expect(logs).not_to include_log_entry(level: :info, message: /User \d+ logged out/)
+        expect(logs).to include_log_entry(severity: :info, message: /User \d+ logged in/)
+        expect(logs).not_to include_log_entry(severity: :info, message: /User \d+ logged out/)
       end
 
-      it "matches with complex tag structures" do
+      it "matches with complex attribute structures" do
         logs = capture_logger(logger) do
           logger.info("complex log",
             user: {id: 123, name: "John"},
             metadata: {version: "1.0", features: ["auth", "logging"]})
         end
 
-        expect(logs).to include_log_entry(tags: {user: {id: 123}})
-        expect(logs).to include_log_entry(tags: {"user.id" => 123})
-        expect(logs).to include_log_entry(tags: {metadata: {version: "1.0"}})
-        expect(logs).not_to include_log_entry(tags: {user: {id: 456}})
+        expect(logs).to include_log_entry(attributes: {user: {id: 123}})
+        expect(logs).to include_log_entry(attributes: {"user.id" => 123})
+        expect(logs).to include_log_entry(attributes: {metadata: {version: "1.0"}})
+        expect(logs).not_to include_log_entry(attributes: {user: {id: 456}})
       end
 
       it "matches with progname" do
@@ -66,7 +66,7 @@ RSpec.describe "rspec matchers" do
           logger.info("application started")
         end
 
-        expect(logs).to include_log_entry(level: :info, progname: "TestApp")
+        expect(logs).to include_log_entry(severity: :info, progname: "TestApp")
         expect(logs).to include_log_entry(progname: /Test/)
         expect(logs).not_to include_log_entry(progname: "DifferentApp")
       end
@@ -77,11 +77,11 @@ RSpec.describe "rspec matchers" do
         end
 
         expect {
-          expect(logs).to include_log_entry(level: :info, message: "expected message")
+          expect(logs).to include_log_entry(severity: :info, message: "expected message")
         }.to raise_error(RSpec::Expectations::ExpectationNotMetError) do |error|
           expect(error.message).to include("expected logs to include entry")
           expect(error.message).to include("expected message")
-          expect(error.message).to include("Captured 1 log entry")
+          expect(error.message).to include("Logged 1 entry")
           expect(error.message).to include("actual message")
         end
       end
@@ -92,7 +92,7 @@ RSpec.describe "rspec matchers" do
         end
 
         expect {
-          expect(logs).not_to include_log_entry(level: :info, message: "test message")
+          expect(logs).not_to include_log_entry(severity: :info, message: "test message")
         }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
       end
     end
@@ -100,17 +100,17 @@ RSpec.describe "rspec matchers" do
     describe "edge cases and error handling" do
       it "handles invalid objects gracefully" do
         expect {
-          expect("not a logger").to include_log_entry(level: :info, message: "test")
+          expect("not a logger").to include_log_entry(severity: :info, message: "test")
         }.to raise_error(RSpec::Expectations::ExpectationNotMetError) do |error|
-          expect(error.message).to include("Expected a Lumberjack::CaptureDevice object, but received a String")
+          expect(error.message).to include("Expected a Lumberjack::Logger object, but received a String")
         end
       end
 
       it "handles nil logger gracefully" do
         expect {
-          expect(nil).to include_log_entry(level: :info, message: "test")
+          expect(nil).to include_log_entry(severity: :info, message: "test")
         }.to raise_error(RSpec::Expectations::ExpectationNotMetError) do |error|
-          expect(error.message).to include("Expected a Lumberjack::CaptureDevice object, but received a NilClass")
+          expect(error.message).to include("Expected a Lumberjack::Logger object, but received a NilClass")
         end
       end
 
@@ -119,9 +119,9 @@ RSpec.describe "rspec matchers" do
           logger.info("test message")
         end
 
-        expect(logs).to include_log_entry(level: :info, message: instance_of(String))
-        expect(logs).to include_log_entry(level: :info, message: a_string_matching(/test/))
-        expect(logs).not_to include_log_entry(level: :info, message: instance_of(Integer))
+        expect(logs).to include_log_entry(severity: :info, message: instance_of(String))
+        expect(logs).to include_log_entry(severity: :info, message: a_string_matching(/test/))
+        expect(logs).not_to include_log_entry(severity: :info, message: instance_of(Integer))
       end
     end
 
@@ -148,8 +148,8 @@ RSpec.describe "rspec matchers" do
       end
 
       it "provides proper description for test documentation" do
-        matcher = include_log_entry(level: :info, message: "test")
-        expect(matcher.description).to eq("have logged entry with level: :info, message: \"test\"")
+        matcher = include_log_entry(severity: :info, message: "test")
+        expect(matcher.description).to eq("have logged entry with severity: :info, message: \"test\"")
       end
     end
   end

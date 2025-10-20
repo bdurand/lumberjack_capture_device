@@ -1,14 +1,23 @@
 # frozen_string_literal: true
 
-# Class responsible for scoring and matching log entries against filters
+# Class responsible for scoring and matching log entries against filters.
+# This class provides fuzzy matching capabilities to find the best matching
+# log entry when exact matches are not available.
 class Lumberjack::CaptureDevice::EntryScore
   # Minimum score threshold for considering a match (30% match)
   MIN_SCORE_THRESHOLD = 0.3
 
   class << self
-    # Calculate the overall match score for an entry against all provided filters
-    # Returns a score between 0.0 and 1.0
-    def calculate_match_score(entry, message_filter, level_filter, tags_filter, progname_filter)
+    # Calculate the overall match score for an entry against all provided filters.
+    # Returns a score between 0.0 and 1.0, where 1.0 represents a perfect match.
+    #
+    # @param entry [Lumberjack::LogEntry] The log entry to score.
+    # @param message_filter [String, Regexp, nil] The message filter to match against.
+    # @param severity_filter [Integer, nil] The severity level to match against.
+    # @param attributes_filter [Hash, nil] The attributes hash to match against.
+    # @param progname_filter [String, nil] The program name to match against.
+    # @return [Float] A score between 0.0 and 1.0 indicating match quality.
+    def calculate_match_score(entry, message_filter, severity_filter, attributes_filter, progname_filter)
       scores = []
       weights = []
 
@@ -19,14 +28,14 @@ class Lumberjack::CaptureDevice::EntryScore
         weights << 0.4  # Weight message matching highly
       end
 
-      # Check level match
-      if level_filter
-        level_score = if entry.severity == level_filter
-          1.0  # Exact level match
+      # Check severity match
+      if severity_filter
+        severity_score = if entry.severity == severity_filter
+          1.0  # Exact severity match
         else
-          level_proximity_score(entry.severity, level_filter)  # Partial level match
+          severity_proximity_score(entry.severity, severity_filter)  # Partial severity match
         end
-        scores << level_score
+        scores << severity_score
         weights << 0.3
       end
 
@@ -37,10 +46,10 @@ class Lumberjack::CaptureDevice::EntryScore
         weights << 0.2
       end
 
-      # Check tags match
-      if tags_filter.is_a?(Hash) && !tags_filter.empty?
-        tags_score = calculate_tags_score(entry.tags, tags_filter)
-        scores << tags_score
+      # Check attributes match
+      if attributes_filter.is_a?(Hash) && !attributes_filter.empty?
+        attributes_score = calculate_attributes_score(entry.attributes, attributes_filter)
+        scores << attributes_score
         weights << 0.3
       end
 
@@ -63,8 +72,12 @@ class Lumberjack::CaptureDevice::EntryScore
       base_score
     end
 
-    # Calculate score for any field value against a filter
-    # Returns a score between 0.0 and 1.0 based on how well the value matches the filter
+    # Calculate score for any field value against a filter.
+    # Returns a score between 0.0 and 1.0 based on how well the value matches the filter.
+    #
+    # @param value [Object] The value to match against the filter.
+    # @param filter [String, Regexp, Object] The filter to match the value against.
+    # @return [Float] A score between 0.0 and 1.0 indicating match quality.
     def calculate_field_score(value, filter)
       return 0.0 unless value && filter
 
@@ -92,10 +105,15 @@ class Lumberjack::CaptureDevice::EntryScore
       end
     end
 
-    # Calculate proximity score based on log level distance
-    def level_proximity_score(entry_level, filter_level)
-      level_diff = (entry_level - filter_level).abs
-      case level_diff
+    # Calculate proximity score based on log severity distance.
+    # Provides partial scoring for severities that are close to the target.
+    #
+    # @param entry_severity [Integer] The severity level of the log entry.
+    # @param filter_severity [Integer] The target severity level to match.
+    # @return [Float] A score between 0.0 and 1.0 based on severity proximity.
+    def severity_proximity_score(entry_severity, filter_severity)
+      severity_diff = (entry_severity - filter_severity).abs
+      case severity_diff
       when 0 then 1.0
       when 1 then 0.7
       when 2 then 0.4
@@ -103,24 +121,34 @@ class Lumberjack::CaptureDevice::EntryScore
       end
     end
 
-    # Calculate score for tag matching
-    def calculate_tags_score(entry_tags, tags_filter)
-      return 0.0 unless entry_tags && tags_filter.is_a?(Hash)
+    # Calculate score for attribute matching.
+    # Compares entry attributes against filter attributes and returns a score
+    # based on how many attributes match.
+    #
+    # @param entry_attributes [Hash] The attributes from the log entry.
+    # @param attributes_filter [Hash] The attributes filter to match against.
+    # @return [Float] A score between 0.0 and 1.0 based on attribute matches.
+    def calculate_attributes_score(entry_attributes, attributes_filter)
+      return 0.0 unless entry_attributes && attributes_filter.is_a?(Hash)
 
-      tags_filter = deep_stringify_keys(Lumberjack::Utils.expand_tags(tags_filter))
-      tags = deep_stringify_keys(Lumberjack::Utils.expand_tags(entry_tags))
+      attributes_filter = deep_stringify_keys(Lumberjack::Utils.expand_attributes(attributes_filter))
+      attributes = deep_stringify_keys(Lumberjack::Utils.expand_attributes(entry_attributes))
 
-      total_tag_filters = count_tag_filters(tags_filter)
-      return 0.0 if total_tag_filters == 0
+      total_attribute_filters = count_attribute_filters(attributes_filter)
+      return 0.0 if total_attribute_filters == 0
 
-      matched_tags = count_matched_tags(tags, tags_filter)
-      matched_tags.to_f / total_tag_filters
+      matched_attributes = count_matched_attributes(attributes, attributes_filter)
+      matched_attributes.to_f / total_attribute_filters
     end
 
     private
 
-    # Calculate string similarity using a simple Levenshtein distance-based approach
-    # Returns a score between 0.0 and 1.0 where 1.0 is an exact match
+    # Calculate string similarity using a simple Levenshtein distance-based approach.
+    # Returns a score between 0.0 and 1.0 where 1.0 is an exact match.
+    #
+    # @param str1 [String] The first string to compare.
+    # @param str2 [String] The second string to compare.
+    # @return [Float] A similarity score between 0.0 and 1.0.
     def string_similarity(str1, str2)
       return 1.0 if str1 == str2
       return 0.0 if str1.nil? || str2.nil? || str1.empty? || str2.empty?
@@ -142,10 +170,17 @@ class Lumberjack::CaptureDevice::EntryScore
 
       # Convert distance to similarity score
       return 0.0 if max_length == 0
+
       1.0 - (distance.to_f / max_length)
     end
 
-    # Simple Levenshtein distance implementation
+    # Simple Levenshtein distance implementation.
+    # Calculates the minimum number of single-character edits needed
+    # to change one string into another.
+    #
+    # @param str1 [String] The first string.
+    # @param str2 [String] The second string.
+    # @return [Integer] The Levenshtein distance between the strings.
     def levenshtein_distance(str1, str2)
       return str2.length if str1.empty?
       return str1.length if str2.empty?
@@ -171,10 +206,15 @@ class Lumberjack::CaptureDevice::EntryScore
       matrix[str1.length][str2.length]
     end
 
-    def count_tag_filters(tags_filter, count = 0)
-      tags_filter.each do |_name, value_filter|
+    # Count the total number of attribute filters in a nested hash structure.
+    #
+    # @param attributes_filter [Hash] The attributes filter hash to count.
+    # @param count [Integer] The current count (used for recursion).
+    # @return [Integer] The total number of filters.
+    def count_attribute_filters(attributes_filter, count = 0)
+      attributes_filter.each do |_name, value_filter|
         if value_filter.is_a?(Hash)
-          count = count_tag_filters(value_filter, count)
+          count = count_attribute_filters(value_filter, count)
         else
           count += 1
         end
@@ -182,27 +222,43 @@ class Lumberjack::CaptureDevice::EntryScore
       count
     end
 
-    def count_matched_tags(tags, tags_filter, count = 0)
-      return count unless tags && tags_filter
+    # Count the number of matched attributes in a nested structure.
+    #
+    # @param attributes [Hash] The log entry attributes to check.
+    # @param attributes_filter [Hash] The filter attributes to match against.
+    # @param count [Integer] The current count (used for recursion).
+    # @return [Integer] The number of matched attributes.
+    def count_matched_attributes(attributes, attributes_filter, count = 0)
+      return count unless attributes && attributes_filter
 
-      tags_filter.each do |name, value_filter|
+      attributes_filter.each do |name, value_filter|
         name = name.to_s
-        tag_values = tags[name]
+        attribute_values = attributes[name]
 
-        if value_filter.is_a?(Hash) && tag_values.is_a?(Hash)
-          count = count_matched_tags(tag_values, value_filter, count)
-        elsif tags.include?(name) && exact_match?(tag_values, value_filter)
+        if value_filter.is_a?(Hash) && attribute_values.is_a?(Hash)
+          count = count_matched_attributes(attribute_values, value_filter, count)
+        elsif attributes.include?(name) && exact_match?(attribute_values, value_filter)
           count += 1
         end
       end
       count
     end
 
+    # Check if a value exactly matches the filter using the === operator.
+    #
+    # @param value [Object] The value to match.
+    # @param filter [Object] The filter to match against.
+    # @return [Boolean] True if the value matches the filter.
     def exact_match?(value, filter)
       return true unless filter
+
       filter === value
     end
 
+    # Recursively convert all keys in a hash structure to strings.
+    #
+    # @param hash [Hash, Object] The hash to stringify or other object to return as-is.
+    # @return [Hash, Object] The hash with string keys or the original object.
     def deep_stringify_keys(hash)
       if hash.is_a?(Hash)
         hash.each_with_object({}) do |(key, value), result|
