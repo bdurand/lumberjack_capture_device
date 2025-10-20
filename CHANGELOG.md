@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
-- The `:level` and `:tags` options on the matching methods (`include?`, `match`, `closest_match`, and `extract`) has been deprecated in favor of `:severity` and `:attributes`.
+- The `:level` and `:tags` options on the matching methods (`include?`, `match`, `closest_match`, and `extract`) have been deprecated in favor of `:severity` and `:attributes`.
 
 ## 1.2.2
 
