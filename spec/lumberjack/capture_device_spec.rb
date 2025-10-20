@@ -35,7 +35,7 @@ RSpec.describe Lumberjack::CaptureDevice do
       original_device = Lumberjack::Device::Test.new
       logger = Lumberjack::Logger.new(original_device, level: :info)
 
-      device = Lumberjack::CaptureDevice.capture(logger) do
+      Lumberjack::CaptureDevice.capture(logger) do
         logger.info("test message 1")
         logger.warn("test message 2")
         expect(original_device.entries).to eq []
