@@ -6,7 +6,7 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   #
   # @param expected_hash [Hash] Expected log entry attributes to match against.
   def initialize(expected_hash)
-    @expected_hash = expected_hash.transform_keys(&:to_sym)
+    @expected_hash = normalize_expected_hash(expected_hash)
     @logger = nil
   end
 
@@ -54,6 +54,30 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
 
   private
 
+  # Symbolize the expected hash keys and replace the deprecated :level and :tags
+  # keys with :severity and :attributes so the hash can be passed to any
+  # Lumberjack::Device::Test device.
+  #
+  # @param expected_hash [Hash] The expected log entry attributes.
+  # @return [Hash] The normalized expected hash.
+  def normalize_expected_hash(expected_hash)
+    expected_hash = expected_hash.transform_keys(&:to_sym)
+
+    if expected_hash.include?(:level)
+      Lumberjack::Utils.deprecated("include_log_entry(level)", "include_log_entry level option has been renamed to severity; it will be removed in version 2.1.")
+      level = expected_hash.delete(:level)
+      expected_hash[:severity] = level unless expected_hash.include?(:severity)
+    end
+
+    if expected_hash.include?(:tags)
+      Lumberjack::Utils.deprecated("include_log_entry(tags)", "include_log_entry tags option has been renamed to attributes; it will be removed in version 2.1.")
+      tags = expected_hash.delete(:tags)
+      expected_hash[:attributes] = tags unless expected_hash.include?(:attributes)
+    end
+
+    expected_hash
+  end
+
   # Check if the logger is using a valid Lumberjack::Device::Test device.
   #
   # @return [Boolean] True if the logger is a Lumberjack::Device::Test.
@@ -85,20 +109,12 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   def formatted_failure_message(logger_or_device, expected_hash)
     device = logger_or_device.respond_to?(:device) ? logger_or_device.device : logger_or_device
 
-    # Handle deprecated keys
-    if expected_hash.include?(:level) && !expected_hash.include?(:severity)
-      expected_hash = expected_hash.merge(severity: expected_hash[:level])
-    end
-    if expected_hash.include?(:tags) && !expected_hash.include?(:attributes)
-      expected_hash = expected_hash.merge(attributes: expected_hash[:tags])
-    end
-
     message = +"expected logs to include entry:\n" \
       "#{Lumberjack::Device::Test.formatted_expectation(expected_hash, indent: 2)}"
 
     closest_match = device.closest_match(**expected_hash)
     if closest_match
-      message << "\n\nClosest match found:" \
+      message << "\n\nClosest match found:\n" \
         "#{Lumberjack::Device::Test.formatted_expectation(closest_match, indent: 2)}"
     end
 

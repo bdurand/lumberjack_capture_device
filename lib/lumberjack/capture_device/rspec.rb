@@ -25,8 +25,9 @@ module Lumberjack::CaptureDevice::RSpec
   end
 
   # Capture log entries from a logger within a block. This method temporarily
-  # replaces the logger's device with a CaptureDevice, sets the log level to debug,
-  # and removes formatters to capture raw log entries for testing.
+  # replaces the logger's device with a CaptureDevice and sets the log level to debug.
+  # The logger's formatters remain active, so captured entries contain the same
+  # formatted values that would have been logged.
   #
   # @param logger [Lumberjack::Logger] The logger to capture entries from.
   # @yield [device] The block to execute while capturing log entries.
@@ -62,9 +63,8 @@ module Lumberjack::CaptureDevice::RSpec
       example.run
 
       if example.exception
-        logger.tag(rspec: {source_location: example.source_location, description: example.metadata[:description]}) do
-          captured_device.write_to_underlying_device
-        end
+        rspec_attributes = {rspec: {location: example.location, description: example.metadata[:description]}}
+        captured_device.write_to_underlying_device(attributes: rspec_attributes)
       end
     end
   end

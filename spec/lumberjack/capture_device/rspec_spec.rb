@@ -97,6 +97,49 @@ RSpec.describe "rspec matchers" do
       end
     end
 
+    describe "when applied to a plain Lumberjack::Device::Test device" do
+      let(:logger) { Lumberjack::Logger.new(:test, level: :debug) }
+
+      it "matches log entries" do
+        logger.info("test message", user_id: 123)
+
+        expect(logger).to include_log_entry(severity: :info, message: "test message", attributes: {user_id: 123})
+        expect(logger).not_to include_log_entry(severity: :error, message: "test message")
+      end
+
+      it "supports the deprecated level and tags options", deprecation_mode: :silent do
+        logger.info("test message", user_id: 123)
+
+        expect(logger).to include_log_entry(level: :info, tags: {user_id: 123})
+        expect(logger).not_to include_log_entry(level: :error, tags: {user_id: 123})
+      end
+
+      it "generates failure messages with the deprecated level and tags options", deprecation_mode: :silent do
+        logger.info("test message", user_id: 123)
+
+        matcher = include_log_entry(level: :error, tags: {user_id: 123})
+        matcher.matches?(logger)
+        expect(matcher.failure_message).to include("expected logs to include entry")
+        expect(matcher.failure_message).to include("severity: ERROR")
+
+        negated_matcher = include_log_entry(level: :info)
+        negated_matcher.matches?(logger)
+        expect(negated_matcher.failure_message_when_negated).to include("expected logs not to include entry")
+      end
+    end
+
+    describe "failure message formatting" do
+      it "puts the closest match on its own lines" do
+        logs = capture_logger(logger) do
+          logger.info("almost the message you want")
+        end
+
+        matcher = include_log_entry(message: "almost the message you wan")
+        matcher.matches?(logs)
+        expect(matcher.failure_message).to include("Closest match found:\n  severity: INFO")
+      end
+    end
+
     describe "edge cases and error handling" do
       it "handles invalid objects gracefully" do
         expect {
@@ -151,6 +194,41 @@ RSpec.describe "rspec matchers" do
         matcher = include_log_entry(severity: :info, message: "test")
         expect(matcher.description).to eq("have logged entry with severity: :info, message: \"test\"")
       end
+    end
+  end
+
+  describe "capture_logger_around_example" do
+    let(:underlying_device) { Lumberjack::Device::Test.new }
+    let(:logger) { Lumberjack::Logger.new(underlying_device, level: :info) }
+
+    # Models the RSpec::Core::Example::Procsy object yielded to around hooks.
+    def fake_example(exception: nil)
+      double(
+        "example",
+        exception: exception,
+        location: "./spec/some_spec.rb:12",
+        metadata: {description: "does something"}
+      ).tap do |example|
+        allow(example).to receive(:run) { logger.info("logged inside example") }
+      end
+    end
+
+    it "does not write captured entries when the example passes" do
+      capture_logger_around_example(logger, fake_example)
+
+      expect(underlying_device.entries).to be_empty
+    end
+
+    it "writes captured entries with rspec attributes when the example fails" do
+      capture_logger_around_example(logger, fake_example(exception: StandardError.new("boom")))
+
+      expect(underlying_device).to include(
+        message: "logged inside example",
+        attributes: {
+          "rspec.location" => "./spec/some_spec.rb:12",
+          "rspec.description" => "does something"
+        }
+      )
     end
   end
 end

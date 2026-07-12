@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.0.1
+
+### Fixed
+
+- `include?` now symbolizes filter keys and raises an `ArgumentError` on unrecognized filter keys. Previously filters with string keys or misspelled keys were silently ignored, causing the method to match any captured entry.
+- `capture_logger_around_example` now correctly adds the rspec metadata attributes to entries written to the underlying device when an example fails. Previously the attributes were silently dropped and building them raised a `NoMethodError` since `RSpec::Core::Example` does not have a `source_location` method; the example location is now recorded in the `rspec.location` attribute.
+- `write_to_underlying_device` accepts an optional `attributes` keyword argument to add attributes to each entry as it is written.
+- The `include_log_entry` RSpec matcher now works with plain `Lumberjack::Device::Test` devices when using the deprecated `:level` and `:tags` options instead of raising an `ArgumentError`.
+- The `max_entries` option is no longer ignored when initializing a `Lumberjack::CaptureDevice`.
+- Fixed missing line break after "Closest match found:" in RSpec matcher failure messages.
+- `each` and `length` now read from a thread safe copy of the entries buffer.
+
+### Removed
+
+- Removed unused internal `Lumberjack::CaptureDevice::EntryScore` class. It was never loaded and was replaced by the scoring logic in the lumberjack gem.
+
 ## 2.0.0
 
 ### Added

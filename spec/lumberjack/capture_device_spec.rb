@@ -74,6 +74,34 @@ RSpec.describe Lumberjack::CaptureDevice do
       device.write_to_underlying_device
       expect(underlying_device.entries.map(&:message)).to match_array ["test message 1", "test message 2"]
     end
+
+    it "adds the additional attributes to each entry" do
+      underlying_device = Lumberjack::Device::Test.new
+      logger = Lumberjack::Logger.new(underlying_device, level: :info)
+      device = Lumberjack::CaptureDevice.new(underlying_device: underlying_device)
+      logger.device = device
+
+      logger.info("test message 1", user_id: 123)
+      logger.warn("test message 2")
+
+      device.write_to_underlying_device(attributes: {rspec: {description: "test example"}})
+
+      expect(underlying_device).to include(message: "test message 1", attributes: {"user_id" => 123, "rspec.description" => "test example"})
+      expect(underlying_device).to include(message: "test message 2", attributes: {"rspec.description" => "test example"})
+      expect(device.entries.first.attributes).to eq({"user_id" => 123})
+    end
+  end
+
+  describe "#initialize" do
+    it "honors the max_entries option" do
+      device = Lumberjack::CaptureDevice.new(max_entries: 5)
+      expect(device.max_entries).to eq 5
+    end
+
+    it "defaults max_entries to 1,000,000" do
+      device = Lumberjack::CaptureDevice.new
+      expect(device.max_entries).to eq 1_000_000
+    end
   end
 
   describe "#include?" do
@@ -92,6 +120,21 @@ RSpec.describe Lumberjack::CaptureDevice do
       expect(result.first.message).to_not be_nil
       expect(result.first.message).to eq "User logged in successfully"
       expect(result.first.attributes["user_id"]).to eq 123
+    end
+
+    it "should match filters with string keys" do
+      logs = Lumberjack::CaptureDevice.capture(logger) do
+        logger.info("foobar")
+      end
+      expect(logs.include?("message" => "foobar")).to be true
+      expect(logs.include?("message" => "baz")).to be false
+    end
+
+    it "should raise an ArgumentError on unrecognized filter keys" do
+      logs = Lumberjack::CaptureDevice.capture(logger) do
+        logger.info("foobar")
+      end
+      expect { logs.include?(mesage: "foobar") }.to raise_error(ArgumentError, /mesage/)
     end
   end
 

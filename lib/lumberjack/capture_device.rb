@@ -15,9 +15,16 @@ module Lumberjack
     class << self
       # Capture the entries written by the logger within a block. Within the block all log
       # entries will be written to a CaptureDevice rather than to the normal output for
-      # the logger. In addition, all formatters will be removed and the log level will be set
-      # to debug. The device being written to be both yielded to the block as well as returned
-      # by the method call.
+      # the logger. In addition, the log level will be set to debug. The logger's formatters
+      # remain active, so captured entries contain the same formatted values that would have
+      # been logged. The device being written to be both yielded to the block as well as
+      # returned by the method call.
+      #
+      # This method is not thread safe. It swaps the device and log level on the logger
+      # itself, so concurrent calls on the same logger will interfere with each other and
+      # entries logged by other threads during the block will be captured as well. The log
+      # level is set on the current context, so threads spawned within the block may not
+      # log at the debug level.
       #
       # @param logger [Lumberjack::Logger] The logger to capture entries from.
       # @param write_to_original [Boolean] If true (the default) the captured entries will be written
@@ -64,7 +71,7 @@ module Lumberjack
     # @param options [Hash] Options to pass to the parent Test device.
     def initialize(options = {})
       @underlying_device = options[:underlying_device]
-      super(options.merge(max_entries: 1_000_000))
+      super({max_entries: 1_000_000}.merge(options))
     end
 
     # Return all the captured entries that match the specified filters. These filters are
@@ -129,6 +136,12 @@ module Lumberjack
     # @option filters [Hash, nil] :tags Alias for the `attributes` option. This option is deprecated.
     # @return [Boolean] True if any entries match the specified filters, false otherwise.
     def include?(filters)
+      filters = filters.transform_keys(&:to_sym)
+      unknown_keys = filters.keys - [:message, :severity, :attributes, :progname, :level, :tags]
+      unless unknown_keys.empty?
+        raise ArgumentError, "unknown filters: #{unknown_keys.map(&:inspect).join(", ")}"
+      end
+
       if filters.include?(:level)
         Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#include?(level)", "Lumberjack::CaptureDevice#include? level option has been renamed to severity; it will be removed in version 2.1.")
       end
@@ -201,9 +214,24 @@ module Lumberjack
 
     # Write the captured log entries to the underlying device.
     #
+    # @param attributes [Hash, nil] Additional attributes to add to each entry as it is
+    #   written. Attributes already set on an entry take precedence over these values.
     # @return [void]
-    def write_to_underlying_device
-      write_to(@underlying_device) if @underlying_device
+    def write_to_underlying_device(attributes: nil)
+      return unless @underlying_device
+
+      if attributes.nil? || attributes.empty?
+        write_to(@underlying_device)
+      else
+        extra_attributes = Lumberjack::Utils.expand_attributes(attributes)
+        entries.each do |entry|
+          copy = entry.dup
+          copy.attributes = extra_attributes.merge(Lumberjack::Utils.expand_attributes(entry.attributes || {}))
+          @underlying_device.write(copy)
+        end
+      end
+
+      nil
     end
 
     # Provide a detailed string representation showing all captured entries.
@@ -228,11 +256,20 @@ module Lumberjack
       "<##{self.class.name} #{length} #{(length == 1) ? "entry" : "entries"} captured>"
     end
 
+    # Return a thread-safe copy of all captured log entries. This must be redefined here
+    # because Enumerable#entries would otherwise shadow the thread-safe implementation
+    # inherited from Lumberjack::Device::Test.
+    #
+    # @return [Array<Lumberjack::LogEntry>] A copy of all captured log entries.
+    def entries
+      @lock.synchronize { @buffer.dup }
+    end
+
     # Return the number of captured log entries.
     #
     # @return [Integer] The number of captured entries.
     def length
-      @buffer.length
+      entries.length
     end
 
     alias_method :size, :length
@@ -243,7 +280,7 @@ module Lumberjack
     # @yieldparam entry [Lumberjack::LogEntry] A captured log entry.
     # @return [Array<Lumberjack::LogEntry>] The captured entries (when no block given).
     def each(&block)
-      @buffer.each(&block)
+      entries.each(&block)
     end
   end
 end
