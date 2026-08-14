@@ -136,7 +136,7 @@ RSpec.describe "rspec matchers" do
 
         matcher = include_log_entry(message: "almost the message you wan")
         matcher.matches?(logs)
-        expect(matcher.failure_message).to include("Closest match found:\n  severity: INFO")
+        expect(matcher.failure_message).to include("Closest match found (- expected, + actual):\n    severity: INFO")
       end
     end
 

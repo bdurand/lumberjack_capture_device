@@ -158,6 +158,24 @@ RSpec.describe Lumberjack::CaptureDevice do
       expect(logs.extract(tags: {foo: "bar"}).collect(&:message)).to eq ["foobar", "baxbar"]
     end
 
+    it "uses the entry formatter to match unformatted filter values" do
+      entry_formatter = Lumberjack::EntryFormatter.build do |config|
+        config.format_attributes(Exception) { |e| {kind: e.class.name, message: e.message} }
+      end
+      error = begin
+        raise "boom"
+      rescue => e
+        e
+      end
+
+      device = Lumberjack::CaptureDevice.new(entry_formatter: entry_formatter)
+      formatted_logger = Lumberjack::Logger.new(device, formatter: entry_formatter)
+      formatted_logger.error("failed", error: error)
+
+      expect(device.extract(attributes: {error: error}).collect(&:message)).to eq ["failed"]
+      expect(device.extract(attributes: {error: ArgumentError.new("nope")})).to be_empty
+    end
+
     it "can use tags as an alias for attributes", deprecation_mode: :silent do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("User logged in successfully", user_id: 123)

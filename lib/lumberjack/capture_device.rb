@@ -75,7 +75,8 @@ module Lumberjack
     end
 
     # Return all the captured entries that match the specified filters. These filters are
-    # the same as described in the `include?` method.
+    # the same as described in the `include?` method. The device `entry_formatter` is used
+    # to match the filters, so unformatted values can be used in the filters if it is set.
     #
     # @param message [String, Regexp, nil] The message to match against the log entries.
     # @param severity [String, Symbol, Integer, nil] The severity to match against the log entries.
@@ -99,7 +100,13 @@ module Lumberjack
         attributes = tags
       end
 
-      matcher = LogEntryMatcher.new(message: message, severity: severity, attributes: attributes, progname: progname)
+      matcher = LogEntryMatcher.new(
+        message: message,
+        severity: severity,
+        attributes: attributes,
+        progname: progname,
+        formatter: entry_formatter
+      )
 
       entries.each do |entry|
         matched << entry if matcher.match?(entry)

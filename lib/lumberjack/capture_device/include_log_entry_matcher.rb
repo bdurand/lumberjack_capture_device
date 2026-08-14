@@ -2,6 +2,11 @@
 
 # RSpec matcher for checking captured logs for specific entries.
 class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
+  # Displayed as the actual value for an expected attribute that the log entry does not have.
+  MISSING_VALUE = "(not set)"
+
+  private_constant :MISSING_VALUE
+
   # Initialize the matcher with expected log entry attributes.
   #
   # @param expected_hash [Hash] Expected log entry attributes to match against.
@@ -19,7 +24,6 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
     @logger = actual
     return false unless valid_logger?
 
-    device = @logger.is_a?(Lumberjack::Device::Test) ? @logger : @logger.device
     device.include?(@expected_hash)
   end
 
@@ -28,7 +32,7 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   # @return [String] A formatted failure message.
   def failure_message
     if valid_logger?
-      formatted_failure_message(@logger, @expected_hash)
+      formatted_failure_message(@expected_hash)
     else
       wrong_object_type_message(@logger)
     end
@@ -39,7 +43,7 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   # @return [String] A formatted failure message for negated expectations.
   def failure_message_when_negated
     if valid_logger?
-      formatted_negated_failure_message(@logger, @expected_hash)
+      formatted_negated_failure_message(@expected_hash)
     else
       wrong_object_type_message(@logger)
     end
@@ -50,6 +54,30 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   # @return [String] A human-readable description of the matcher.
   def description
     "have logged entry with #{expectation_description(@expected_hash)}"
+  end
+
+  # Generate a diff between a log entry and the expected log entry values. The severity,
+  # message, progname, and attributes of the entry are listed. Values that don't match the
+  # expectation are shown on a pair of lines with the expected value prefixed with "-" and
+  # the value from the log entry prefixed with "+". This is intended to make it easy to spot
+  # exactly which fields kept an entry from matching.
+  #
+  # The comparison is done by Lumberjack::LogEntryMatcher#diff so the diff always agrees
+  # with the result of the match.
+  #
+  # @param entry [Lumberjack::LogEntry] The log entry to compare to the expectation.
+  # @param indent [Integer] The number of spaces to indent each line.
+  # @return [String] A formatted diff of the entry and the expectation.
+  def entry_diff(entry, indent: 2)
+    indent_str = " " * indent
+
+    entry_differences(entry).collect do |name, expected, actual, matched|
+      if matched
+        "#{indent_str}  #{name}: #{actual}"
+      else
+        "#{indent_str}- #{name}: #{expected}#{Lumberjack::LINE_SEPARATOR}#{indent_str}+ #{name}: #{actual}"
+      end
+    end.join(Lumberjack::LINE_SEPARATOR)
   end
 
   private
@@ -103,19 +131,16 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
 
   # Generate a detailed failure message showing expected vs actual logs.
   #
-  # @param logger_or_device [Lumberjack::Device::Test] The logger device.
   # @param expected_hash [Hash] The expected log entry attributes.
   # @return [String] A formatted failure message with context.
-  def formatted_failure_message(logger_or_device, expected_hash)
-    device = logger_or_device.respond_to?(:device) ? logger_or_device.device : logger_or_device
-
+  def formatted_failure_message(expected_hash)
     message = +"expected logs to include entry:\n" \
       "#{Lumberjack::Device::Test.formatted_expectation(expected_hash, indent: 2)}"
 
     closest_match = device.closest_match(**expected_hash)
     if closest_match
-      message << "\n\nClosest match found:\n" \
-        "#{Lumberjack::Device::Test.formatted_expectation(closest_match, indent: 2)}"
+      message << "\n\nClosest match found (- expected, + actual):\n" \
+        "#{entry_diff(closest_match, indent: 2)}"
     end
 
     entries = device.entries
@@ -133,11 +158,9 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
 
   # Generate a failure message for negated expectations.
   #
-  # @param logger_or_device [Lumberjack::Device::Test] The logger to check.
   # @param expected_hash [Hash] The expected log entry attributes that should not be present.
   # @return [String] A formatted failure message for negated expectations.
-  def formatted_negated_failure_message(logger_or_device, expected_hash)
-    device = logger_or_device.respond_to?(:device) ? logger_or_device.device : logger_or_device
+  def formatted_negated_failure_message(expected_hash)
     message = "expected logs not to include entry:\n" \
       "#{Lumberjack::Device::Test.formatted_expectation(expected_hash, indent: 2)}"
 
@@ -173,6 +196,103 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
     end
 
     info.join(", ")
+  end
+
+  # Build the matcher used to compare log entries to the expectation. The entry formatter
+  # from the device is used so filter values are matched the same way they are by the
+  # device itself.
+  #
+  # @return [Lumberjack::LogEntryMatcher] The matcher for the expected values.
+  def log_entry_matcher
+    Lumberjack::LogEntryMatcher.new(
+      message: @expected_hash[:message],
+      severity: @expected_hash[:severity],
+      progname: @expected_hash[:progname],
+      attributes: @expected_hash[:attributes],
+      formatter: device&.entry_formatter
+    )
+  end
+
+  # Compare a log entry to the expected values one field at a time. The comparison itself is
+  # done by Lumberjack::LogEntryMatcher#diff which reports only the mismatched fields; the
+  # rest of the entry is filled in from the entry so it can be seen in full.
+  #
+  # @param entry [Lumberjack::LogEntry] The log entry to compare to the expectation.
+  # @return [Array<Array>] An array of [name, expected value, actual value, matched] tuples
+  #   in the order they should be displayed. The values are already formatted for display.
+  def entry_differences(entry)
+    diff = log_entry_matcher.diff(entry)
+    differences = []
+
+    mismatch = diff["severity"]
+    differences << if mismatch
+      # Severities are already reported as labels by the diff.
+      ["severity", mismatch[:expected].to_s, mismatch[:actual].to_s, false]
+    else
+      ["severity", nil, entry.severity_label, true]
+    end
+
+    differences << field_difference("message", diff["message"], entry.message)
+
+    unless diff["progname"].nil? && entry.progname.nil?
+      differences << field_difference("progname", diff["progname"], entry.progname)
+    end
+
+    differences.concat(attribute_differences(entry, diff["attributes"]))
+  end
+
+  # Build the display tuple for a single log entry field.
+  #
+  # @param name [String] The name of the field.
+  # @param mismatch [Hash, nil] The expected and actual values reported by the diff, or nil
+  #   if the field matched the expectation.
+  # @param value [Object] The value from the log entry, used when the field matched.
+  # @return [Array] A [name, expected value, actual value, matched] tuple.
+  def field_difference(name, mismatch, value)
+    if mismatch
+      [name, formatted_value(mismatch[:expected]), formatted_value(mismatch[:actual]), false]
+    else
+      [name, nil, formatted_value(value), true]
+    end
+  end
+
+  # Build the display tuples for the attributes of a log entry. Mismatches are reported by
+  # the diff per attribute using dot notation names. The remaining attributes on the entry
+  # are listed as well, followed by any expected attributes the entry does not have.
+  #
+  # @param entry [Lumberjack::LogEntry] The log entry being compared to the expectation.
+  # @param mismatches [Hash, nil] The attribute mismatches reported by the diff.
+  # @return [Array<Array>] An array of [name, expected value, actual value, matched] tuples.
+  def attribute_differences(entry, mismatches)
+    mismatches ||= {}
+
+    if mismatches.include?(:expected)
+      # Matchers like RSpec's hash_including are matched against the attributes hash as a whole.
+      return [field_difference("attributes", mismatches, nil)]
+    end
+
+    entry_attributes = Lumberjack::Utils.flatten_attributes(entry.attributes || {})
+
+    differences = entry_attributes.collect do |name, value|
+      field_difference("attributes.#{name}", mismatches[name], value)
+    end
+
+    (mismatches.keys - entry_attributes.keys).each do |name|
+      mismatch = mismatches[name]
+      actual = mismatch[:actual].nil? ? MISSING_VALUE : formatted_value(mismatch[:actual])
+      differences << ["attributes.#{name}", formatted_value(mismatch[:expected]), actual, false]
+    end
+
+    differences
+  end
+
+  # The Lumberjack::Device::Test the entries are being matched against.
+  #
+  # @return [Lumberjack::Device::Test, nil] The device, or nil if the logger is not valid.
+  def device
+    return nil unless valid_logger?
+
+    @logger.is_a?(Lumberjack::Device::Test) ? @logger : @logger.device
   end
 
   # Format a value for display in a description. Matcher objects (i.e. RSpec matchers)

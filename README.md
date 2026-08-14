@@ -78,6 +78,26 @@ describe MyClass do
 end
 ```
 
+When the matcher fails, the failure message includes a diff between the expectation and the closest matching entry so you can see exactly which fields and attributes are off. Lines prefixed with `-` show what was expected and lines prefixed with `+` show what was actually logged.
+
+```
+expected logs to include entry:
+  severity: WARN
+  message: User logged out
+  attributes: request_id: "abc"
+              user.role: "admin"
+
+Closest match found (- expected, + actual):
+  - severity: WARN
+  + severity: INFO
+    message: "User logged out"
+  - attributes.user.role: "admin"
+  + attributes.user.role: "guest"
+    attributes.duration: 1.5
+  - attributes.request_id: "abc"
+  + attributes.request_id: (not set)
+```
+
 You can also set up log capturing around each example with the `capture_logger_around_example` method.
 
 ```ruby

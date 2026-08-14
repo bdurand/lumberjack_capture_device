@@ -10,9 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `include?` now symbolizes filter keys and raises an `ArgumentError` on unrecognized filter keys. Previously filters with string keys or misspelled keys were silently ignored, causing the method to match any captured entry.
 - `write_to_underlying_device` accepts an optional `attributes` keyword argument to add attributes to each entry as it is written.
+- The `include_log_entry` matcher failure message now shows a diff of the closest matching entry against the expectation instead of just printing the entry. Severity, message, progname, and each attribute are shown with the expected value on a `-` line and the logged value on a `+` line so it is obvious which ones prevented the match. The comparison is done with `Lumberjack::LogEntryMatcher#diff` using the device's entry formatter, so the diff always agrees with the match. The diff is also available directly from `Lumberjack::CaptureDevice::IncludeLogEntryMatcher#entry_diff`.
 
 ### Fixed
 
+- `extract` now matches filters with the device `entry_formatter` like `include?`, `match`, and `closest_match` do. Previously filter values were only compared to the formatted values captured on the entries, so unformatted values in the filters did not match.
 - `capture_logger_around_example` now correctly adds the rspec metadata attributes to entries written to the underlying device when an example fails. Previously the attributes were silently dropped and building them raised a `NoMethodError` since `RSpec::Core::Example` does not have a `source_location` method; the example location is now recorded in the `rspec.location` attribute.
 - The `include_log_entry` RSpec matcher now works with plain `Lumberjack::Device::Test` devices when using the deprecated `:level` and `:tags` options instead of raising an `ArgumentError`.
 - The `max_entries` option is no longer ignored when initializing a `Lumberjack::CaptureDevice`.
