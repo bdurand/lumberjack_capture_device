@@ -75,6 +75,17 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
 
         expect(message).to include("Closest match found:")
       end
+
+      it "includes a matcher used as the attributes" do
+        logger.info("test message", user_id: 456)
+
+        non_matching_matcher = Lumberjack::CaptureDevice::IncludeLogEntryMatcher.new(message: "test message", attributes: hash_including(user_id: 123))
+        expect(non_matching_matcher.matches?(logger)).to be false
+
+        message = non_matching_matcher.failure_message
+
+        expect(message).to include("attributes: hash_including(user_id: 123)")
+      end
     end
 
     context "when given an invalid object" do
@@ -139,6 +150,14 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
 
       expect(description).to eq("have logged entry with message: \"simple\"")
     end
+
+    it "handles a matcher as the attributes" do
+      matcher = Lumberjack::CaptureDevice::IncludeLogEntryMatcher.new(severity: :info, attributes: hash_including(user_id: 123))
+
+      description = matcher.description
+
+      expect(description).to eq("have logged entry with severity: :info, attributes: hash_including(user_id: 123)")
+    end
   end
 
   describe "private methods" do
@@ -185,6 +204,24 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
         expected_hash = {severity: :info, attributes: {}}
         description = matcher.send(:expectation_description, expected_hash)
         expect(description).to eq("severity: :info")
+      end
+
+      it "formats a matcher used as the attributes" do
+        expected_hash = {severity: :info, attributes: hash_including("user.id" => 123)}
+        description = matcher.send(:expectation_description, expected_hash)
+        expect(description).to eq("severity: :info, attributes: hash_including(\"user.id\" => 123)")
+      end
+
+      it "formats matchers used as attribute values" do
+        expected_hash = {attributes: {user_id: instance_of(Integer)}}
+        description = matcher.send(:expectation_description, expected_hash)
+        expect(description).to eq("attributes: user_id=an_instance_of(Integer)")
+      end
+
+      it "formats matchers used as the message" do
+        expected_hash = {message: a_string_including("test")}
+        description = matcher.send(:expectation_description, expected_hash)
+        expect(description).to eq("message: a string including \"test\"")
       end
 
       it "handles nil values by omitting them" do

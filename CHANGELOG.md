@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `include_log_entry` RSpec matcher now works with plain `Lumberjack::Device::Test` devices when using the deprecated `:level` and `:tags` options instead of raising an `ArgumentError`.
 - The `max_entries` option is no longer ignored when initializing a `Lumberjack::CaptureDevice`.
 - Fixed missing line break after "Closest match found:" in RSpec matcher failure messages.
+- The `include_log_entry` matcher description no longer omits the expected attributes when a matcher (i.e. RSpec's `hash_including`) is passed as the `attributes` option instead of a hash. Matcher objects are now rendered with their description rather than by inspecting them.
 - `each` and `length` now read from a thread safe copy of the entries buffer.
 
 ### Removed

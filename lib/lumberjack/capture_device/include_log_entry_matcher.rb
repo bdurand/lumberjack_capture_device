@@ -156,14 +156,36 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   # @return [String] A formatted description of the expected attributes.
   def expectation_description(expected_hash)
     info = []
-    info << "severity: #{expected_hash[:severity].inspect}" unless expected_hash[:severity].nil?
-    info << "message: #{expected_hash[:message].inspect}" unless expected_hash[:message].nil?
-    info << "progname: #{expected_hash[:progname].inspect}" unless expected_hash[:progname].nil?
-    if expected_hash[:attributes].is_a?(Hash) && !expected_hash[:attributes].empty?
-      attributes = Lumberjack::Utils.flatten_attributes(expected_hash[:attributes])
-      attributes_info = attributes.collect { |name, value| "#{name}=#{value.inspect}" }.join(", ")
-      info << "attributes: #{attributes_info}"
+    info << "severity: #{formatted_value(expected_hash[:severity])}" unless expected_hash[:severity].nil?
+    info << "message: #{formatted_value(expected_hash[:message])}" unless expected_hash[:message].nil?
+    info << "progname: #{formatted_value(expected_hash[:progname])}" unless expected_hash[:progname].nil?
+
+    expected_attributes = expected_hash[:attributes]
+    if expected_attributes.is_a?(Hash)
+      unless expected_attributes.empty?
+        attributes = Lumberjack::Utils.flatten_attributes(expected_attributes)
+        attributes_info = attributes.collect { |name, value| "#{name}=#{formatted_value(value)}" }.join(", ")
+        info << "attributes: #{attributes_info}"
+      end
+    elsif expected_attributes
+      # Matchers like RSpec's hash_including are matched against the attributes hash as a whole.
+      info << "attributes: #{formatted_value(expected_attributes)}"
     end
+
     info.join(", ")
+  end
+
+  # Format a value for display in a description. Matcher objects (i.e. RSpec matchers)
+  # that implement a +description+ method are displayed using that description since
+  # inspecting them is not very informative.
+  #
+  # @param value [Object] The value to format.
+  # @return [String] The formatted value.
+  def formatted_value(value)
+    if value.respond_to?(:description) && !value.is_a?(Module)
+      value.description.to_s
+    else
+      value.inspect
+    end
   end
 end

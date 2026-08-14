@@ -4,6 +4,7 @@ gemspec
 
 # Exclude development-only gems from dependabot.
 unless ENV["DEPENDABOT"]
+  gem "lumberjack", path: "../lumberjack"
   gem "sqlite3"
 
   gem "rake"
