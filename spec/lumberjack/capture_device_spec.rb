@@ -105,23 +105,6 @@ RSpec.describe Lumberjack::CaptureDevice do
   end
 
   describe "#include?" do
-    it "should match the log severity with the deprecated level option", deprecation_mode: :silent do
-      logs = Lumberjack::CaptureDevice.capture(logger) do
-        logger.info("foobar")
-      end
-      expect(logs).to include(level: :info)
-    end
-
-    it "should match attributes with the deprecated tags option", deprecation_mode: :silent do
-      logs = Lumberjack::CaptureDevice.capture(logger) do
-        logger.info("User logged in successfully", user_id: 123)
-      end
-      result = logs.extract(tags: {user_id: 123})
-      expect(result.first.message).to_not be_nil
-      expect(result.first.message).to eq "User logged in successfully"
-      expect(result.first.attributes["user_id"]).to eq 123
-    end
-
     it "should match filters with string keys" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar")
@@ -139,7 +122,7 @@ RSpec.describe Lumberjack::CaptureDevice do
   end
 
   describe "#extract" do
-    it "should extract entries from the buffer", deprecation_mode: :silent do
+    it "should extract entries from the buffer" do
       logs = Lumberjack::CaptureDevice.capture(logger) do
         logger.info("foobar", foo: "bar", baz: {one: 1, two: [2, 22], three: nil})
         logger.warn("FOOBAR", foo: "bum")
@@ -152,10 +135,6 @@ RSpec.describe Lumberjack::CaptureDevice do
       expect(logs.extract(severity: :info).collect(&:message)).to eq ["foobar", "baxbar"]
       expect(logs.extract(attributes: {foo: "bar"}).collect(&:message)).to eq ["foobar", "baxbar"]
       expect(logs.extract(progname: "TestProgname").collect(&:message)).to eq ["baxbar"]
-
-      # Deprecated aliases
-      expect(logs.extract(level: :info).collect(&:message)).to eq ["foobar", "baxbar"]
-      expect(logs.extract(tags: {foo: "bar"}).collect(&:message)).to eq ["foobar", "baxbar"]
     end
 
     it "uses the entry formatter to match unformatted filter values" do
@@ -175,25 +154,6 @@ RSpec.describe Lumberjack::CaptureDevice do
       expect(device.extract(attributes: {error: error}).collect(&:message)).to eq ["failed"]
       expect(device.extract(attributes: {error: ArgumentError.new("nope")})).to be_empty
     end
-
-    it "can use tags as an alias for attributes", deprecation_mode: :silent do
-      logs = Lumberjack::CaptureDevice.capture(logger) do
-        logger.info("User logged in successfully", user_id: 123)
-      end
-      result = logs.extract(tags: {user_id: 123})
-      expect(result.first.message).to_not be_nil
-      expect(result.first.message).to eq "User logged in successfully"
-      expect(result.first.attributes["user_id"]).to eq 123
-    end
-
-    it "can use level as an alias for attributes", deprecation_mode: :silent do
-      logs = Lumberjack::CaptureDevice.capture(logger) do
-        logger.info("User logged in successfully")
-      end
-      result = logs.extract(level: :info)
-      expect(result.first.message).to_not be_nil
-      expect(result.first.message).to eq "User logged in successfully"
-    end
   end
 
   describe "#inspect" do
@@ -210,55 +170,6 @@ RSpec.describe Lumberjack::CaptureDevice do
       expect(logs.inspect).to include "duration: 1.23"
       expect(logs.inspect).to include "foo.bar: baz"
       expect(logs.inspect).to include "progname: TestProgname"
-    end
-  end
-
-  describe "#match" do
-    it "can use level as an alias for severity", deprecation_mode: :silent do
-      logs = Lumberjack::CaptureDevice.capture(logger) do
-        logger.info("User logged in successfully")
-      end
-      result = logs.match(level: :info, message: "User logged in successfully")
-      expect(result).to_not be_nil
-      expect(result.message).to eq "User logged in successfully"
-      expect(result.severity).to eq Logger::INFO
-    end
-
-    it "can use tags as an alias for attributes", deprecation_mode: :silent do
-      logs = Lumberjack::CaptureDevice.capture(logger) do
-        logger.info("User logged in successfully", user_id: 123)
-      end
-      result = logs.match(tags: {user_id: 123})
-      expect(result).to_not be_nil
-      expect(result.message).to eq "User logged in successfully"
-      expect(result.attributes["user_id"]).to eq 123
-    end
-  end
-
-  describe "#closest_match" do
-    let(:logs) do
-      Lumberjack::CaptureDevice.capture(logger) do
-        logger.info("User logged in successfully")
-        logger.warn("Database connection slow")
-        logger.error("Failed to authenticate user")
-        logger.debug("Processing request", user_id: 123, action: "login")
-        logger.progname = "TestService"
-        logger.info("Service started", service: "test")
-      end
-    end
-
-    it "can use level as an alias for severity", deprecation_mode: :silent do
-      result = logs.closest_match(level: :info, message: "Database connection")
-      expect(result).to_not be_nil
-      expect(result.message).to eq "Database connection slow"
-      expect(result.severity).to eq Logger::WARN
-    end
-
-    it "can use tags as an alias for attributes", deprecation_mode: :silent do
-      result = logs.closest_match(tags: {user_id: 123})
-      expect(result).to_not be_nil
-      expect(result.message).to eq "Processing request"
-      expect(result.attributes["user_id"]).to eq 123
     end
   end
 

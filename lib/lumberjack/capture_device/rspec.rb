@@ -9,15 +9,13 @@ module Lumberjack::CaptureDevice::RSpec
   # This matcher provides better error messages than using the include? method directly.
   #
   # @param expected_hash [Hash] The expected log entry attributes to match.
-  # @option expected_hash [String, Symbol, Integer] :level The expected log level.
-  # @option expected_hash [String, Symbol, Integer] :severity Alias for :level.
+  # @option expected_hash [String, Symbol, Integer] :severity The expected log severity.
   # @option expected_hash [String, Regexp] :message The expected message content.
   # @option expected_hash [Hash] :attributes Expected log entry attributes.
-  # @option expected_hash [Hash] :tags Alias for :attributes.
   # @option expected_hash [String] :progname Expected program name.
   # @return [Lumberjack::CaptureDevice::IncludeLogEntryMatcher] A matcher for the expected log entry.
   # @example
-  #   expect(logs).to include_log_entry(level: :info, message: "User logged in")
+  #   expect(logs).to include_log_entry(severity: :info, message: "User logged in")
   # @example
   #   expect(logs).to include_log_entry(message: /error/i, attributes: {user_id: 123})
   def include_log_entry(expected_hash)
@@ -37,7 +35,7 @@ module Lumberjack::CaptureDevice::RSpec
   #   logs = capture_logger(Rails.logger) do
   #     Rails.logger.info("Test message")
   #   end
-  #   expect(logs).to include_log_entry(level: :info, message: "Test message")
+  #   expect(logs).to include_log_entry(severity: :info, message: "Test message")
   def capture_logger(logger, write_to_original: true, &block)
     Lumberjack::CaptureDevice.capture(logger, write_to_original: write_to_original, &block)
   end

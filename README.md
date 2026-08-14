@@ -26,7 +26,7 @@ You can use the `include?` method on the log device to determine if specific log
 ```ruby
 Lumberjack::CaptureDevice.capture(Rails.logger) do |logs|
   do_something
-  expect(logs).to include(level: :info, message: "Something happened")
+  expect(logs).to include(severity: :info, message: "Something happened")
 end
 ```
 
@@ -34,30 +34,30 @@ You can also write that same test as:
 
 ```ruby
 logs = Lumberjack::CaptureDevice.capture(Rails.logger) { do_something }
-expect(logs).to include(level: :info, message: "Something happened")
+expect(logs).to include(severity: :info, message: "Something happened")
 ```
 
 For MiniTest, you could assert:
 
 ```ruby
 logs = Lumberjack::CaptureDevice.capture(Rails.logger) { do_something }
-assert(logs.include?(level: :info, message: "Something happened"))
+assert(logs.include?(severity: :info, message: "Something happened"))
 ```
 
-You can filter the logs on level, message, and attributes.
+You can filter the logs on severity, message, progname, and attributes.
 
-- The level option can take either a label (i.e. `:warn`) or a constant (i.e. `Logger::WARN`).
+- The severity option can take either a label (i.e. `:warn`) or a constant (i.e. `Logger::WARN`).
 - The message filter can be either an exact string or a regular expression, or any matcher supported by your test library.
 - The attributes argument can match attributes with a Hash mapping attribute names to the matcher values. If attributes are nested, you can use dot notation on attribute names to reference nested attributes.
 
 ```ruby
-expect(logs).to include(level: :info, message: /something/i)
-expect(logs).to include(level: Logger::INFO, attributes: {foo: "bar"})
+expect(logs).to include(severity: :info, message: /something/i)
+expect(logs).to include(severity: Logger::INFO, attributes: {foo: "bar"})
 expect(logs).to include(attributes: {foo: anything, count: {one: 1}})
 expect(logs).to include(attributes: {foo: anything, "count.one" => 1})
 ```
 
-You can also use the `Lumberjack::CaptureDevice#extract` method with the same arguments as used by `include?` to extract all log entries that match the filters. You can get all of the log entries with `Lumberjack::CaptureDevice#buffer`.
+You can also use the `Lumberjack::CaptureDevice#extract` method with the same arguments as used by `include?` to extract all log entries that match the filters. You can get all of the log entries with `Lumberjack::CaptureDevice#entries`.
 
 ### RSpec Support
 

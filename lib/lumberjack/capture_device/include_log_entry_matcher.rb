@@ -11,7 +11,8 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   #
   # @param expected_hash [Hash] Expected log entry attributes to match against.
   def initialize(expected_hash)
-    @expected_hash = normalize_expected_hash(expected_hash)
+    # The keys are symbolized so the hash can be passed to any Lumberjack::Device::Test device.
+    @expected_hash = expected_hash.transform_keys(&:to_sym)
     @logger = nil
   end
 
@@ -81,30 +82,6 @@ class Lumberjack::CaptureDevice::IncludeLogEntryMatcher
   end
 
   private
-
-  # Symbolize the expected hash keys and replace the deprecated :level and :tags
-  # keys with :severity and :attributes so the hash can be passed to any
-  # Lumberjack::Device::Test device.
-  #
-  # @param expected_hash [Hash] The expected log entry attributes.
-  # @return [Hash] The normalized expected hash.
-  def normalize_expected_hash(expected_hash)
-    expected_hash = expected_hash.transform_keys(&:to_sym)
-
-    if expected_hash.include?(:level)
-      Lumberjack::Utils.deprecated("include_log_entry(level)", "include_log_entry level option has been renamed to severity; it will be removed in version 2.1.")
-      level = expected_hash.delete(:level)
-      expected_hash[:severity] = level unless expected_hash.include?(:severity)
-    end
-
-    if expected_hash.include?(:tags)
-      Lumberjack::Utils.deprecated("include_log_entry(tags)", "include_log_entry tags option has been renamed to attributes; it will be removed in version 2.1.")
-      tags = expected_hash.delete(:tags)
-      expected_hash[:attributes] = tags unless expected_hash.include?(:attributes)
-    end
-
-    expected_hash
-  end
 
   # Check if the logger is using a valid Lumberjack::Device::Test device.
   #

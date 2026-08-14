@@ -106,26 +106,6 @@ RSpec.describe "rspec matchers" do
         expect(logger).to include_log_entry(severity: :info, message: "test message", attributes: {user_id: 123})
         expect(logger).not_to include_log_entry(severity: :error, message: "test message")
       end
-
-      it "supports the deprecated level and tags options", deprecation_mode: :silent do
-        logger.info("test message", user_id: 123)
-
-        expect(logger).to include_log_entry(level: :info, tags: {user_id: 123})
-        expect(logger).not_to include_log_entry(level: :error, tags: {user_id: 123})
-      end
-
-      it "generates failure messages with the deprecated level and tags options", deprecation_mode: :silent do
-        logger.info("test message", user_id: 123)
-
-        matcher = include_log_entry(level: :error, tags: {user_id: 123})
-        matcher.matches?(logger)
-        expect(matcher.failure_message).to include("expected logs to include entry")
-        expect(matcher.failure_message).to include("severity: ERROR")
-
-        negated_matcher = include_log_entry(level: :info)
-        negated_matcher.matches?(logger)
-        expect(negated_matcher.failure_message_when_negated).to include("expected logs not to include entry")
-      end
     end
 
     describe "failure message formatting" do

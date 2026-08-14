@@ -74,9 +74,17 @@ module Lumberjack
       super({max_entries: 1_000_000}.merge(options))
     end
 
-    # Return all the captured entries that match the specified filters. These filters are
-    # the same as described in the `include?` method. The device `entry_formatter` is used
-    # to match the filters, so unformatted values can be used in the filters if it is set.
+    # Return all the captured entries that match the specified filters. The device
+    # `entry_formatter` is used to match the filters, so unformatted values can be used in
+    # the filters if it is set.
+    #
+    # For severity, you can specify either a numeric constant (i.e. `Logger::WARN`) or a symbol
+    # (i.e. `:warn`).
+    #
+    # For message and progname you can specify a string to perform an exact match or a regular
+    # expression to perform a partial or pattern match. You can also supply any matcher value
+    # available in your test library (i.e. in rspec you could use `anything` or `instance_of(Error)`,
+    # etc.).
     #
     # @param message [String, Regexp, nil] The message to match against the log entries.
     # @param severity [String, Symbol, Integer, nil] The severity to match against the log entries.
@@ -86,19 +94,11 @@ module Lumberjack
     # @param progname [String, nil] The program name to match against the log entries.
     # @param limit [Integer, nil] The maximum number of entries to return. If nil, all matching entries
     #   will be returned.
-    # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter.
-    # @param tags [Hash, nil] Alias for the `attributes` parameter.
     # @return [Array<Lumberjack::LogEntry>] An array of log entries that match the specified filters.
-    def extract(message: nil, severity: nil, attributes: nil, progname: nil, limit: nil, level: nil, tags: nil)
+    # @example
+    #   logs.extract(severity: :warn, message: /something happened/, attributes: {user: "john"})
+    def extract(message: nil, severity: nil, attributes: nil, progname: nil, limit: nil)
       matched = []
-      if severity.nil? && !level.nil?
-        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#extract(level)", "Lumberjack::CaptureDevice#extract level parameter has been renamed to severity; it will be removed in version 2.1.")
-        severity = level
-      end
-      if attributes.nil? && !tags.nil?
-        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#extract(tags)", "Lumberjack::CaptureDevice#extract tags parameter has been renamed to attributes; it will be removed in version 2.1.")
-        attributes = tags
-      end
 
       matcher = LogEntryMatcher.new(
         message: message,
@@ -116,107 +116,31 @@ module Lumberjack
       matched
     end
 
-    # Return true if the captured log entries match the specified level, message, and attributes.
+    # Return true if the captured log entries match the specified filters. The filters are the
+    # same as the ones used by the `extract` method.
     #
-    # For level, you can specify either a numeric constant (i.e. `Logger::WARN`) or a symbol
-    # (i.e. `:warn`).
-    #
-    # For message you can specify a string to perform an exact match or a regular expression
-    # to perform a partial or pattern match. You can also supply any matcher value available
-    # in your test library (i.e. in rspec you could use `anything` or `instance_of(Error)`, etc.).
-    #
-    # For attributes, you can specify a hash of attribute names to values to match. You can use
-    # regular expression or matchers as the values here as well. attributes can also be nested to match
-    # nested attributes.
+    # This must be redefined here because Enumerable#include? would otherwise shadow the
+    # implementation inherited from Lumberjack::Device::Test.
     #
     # @example
-    #   logs.include?(level: :warn, message: /something happened/, attributes: {user: "john"})
+    #   logs.include?(severity: :warn, message: /something happened/, attributes: {user: "john"})
     #
     # @param filters [Hash] The filters to apply to the captured entries.
     # @option filters [String, Regexp] :message The message to match against the log entries.
-    # @option filters [String, Symbol, Integer] :severity The log level to match against the log entries.
+    # @option filters [String, Symbol, Integer] :severity The severity to match against the log entries.
     # @option filters [Hash] :attributes A hash of attribute names to values to match against the log entries. The attributes
     #   will match nested attributes using dot notation (e.g. `foo.bar` will match an attribute with the structure
     #   +{foo: {bar: "value"}}+).
     # @option filters [String] :progname The program name to match against the log entries.
-    # @option filters [String, Symbol, Integer, nil] :level Alias for the `severity` option. This option is deprecated.
-    # @option filters [Hash, nil] :tags Alias for the `attributes` option. This option is deprecated.
     # @return [Boolean] True if any entries match the specified filters, false otherwise.
     def include?(filters)
       filters = filters.transform_keys(&:to_sym)
-      unknown_keys = filters.keys - [:message, :severity, :attributes, :progname, :level, :tags]
+      unknown_keys = filters.keys - [:message, :severity, :attributes, :progname]
       unless unknown_keys.empty?
-        raise ArgumentError, "unknown filters: #{unknown_keys.map(&:inspect).join(", ")}"
+        raise ArgumentError, "unknown log filters: #{unknown_keys.map(&:inspect).join(", ")}"
       end
 
-      if filters.include?(:level)
-        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#include?(level)", "Lumberjack::CaptureDevice#include? level option has been renamed to severity; it will be removed in version 2.1.")
-      end
-
-      if filters.include?(:tags)
-        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#include?(tags)", "Lumberjack::CaptureDevice#include? tags option has been renamed to attributes; it will be removed in version 2.1.")
-      end
-
-      munged_filters = {
-        message: filters[:message],
-        severity: filters[:severity] || filters[:level],
-        attributes: filters[:attributes] || filters[:tags],
-        progname: filters[:progname]
-      }.compact
-
-      !!match(**munged_filters)
-    end
-
-    # Return the first captured entry that matches the filters.
-    #
-    # @param message [String, Regexp, nil] The message to match against the log entries.
-    # @param severity [String, Symbol, Integer, nil] The log level to match against the log entries.
-    # @param attributes [Hash, nil] A hash of attribute names to values to match against the log entries. The attributes
-    #   will match nested attributes using dot notation (e.g. `foo.bar` will match an attribute with the structure
-    #   +{foo: {bar: "value"}}+).
-    # @param progname [String, nil] The program name to match against the log entries.
-    # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter. This parameter is deprecated.
-    # @param tags [Hash, nil] Alias for the `attributes` parameter. This parameter is deprecated.
-    # @return [Lumberjack::LogEntry, nil] The first matching log entry, or nil if no match is found.
-    def match(message: nil, severity: nil, attributes: nil, progname: nil, level: nil, tags: nil)
-      unless level.nil?
-        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#match(level)", "Lumberjack::CaptureDevice#match level parameter has been renamed to severity; it will be removed in version 2.1.")
-      end
-      unless tags.nil?
-        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#match(tags)", "Lumberjack::CaptureDevice#match tags parameter has been renamed to attributes; it will be removed in version 2.1.")
-      end
-
-      super(message: message, severity: severity || level, attributes: attributes || tags, progname: progname)
-    end
-
-    # Return the log entry that most closely matches the specified filters. This method
-    # uses fuzzy matching logic to find the best match when no exact match exists.
-    # The matching score is calculated based on how many criteria are met and how closely
-    # they match. Returns nil if no entry meets the minimum matching criteria.
-    #
-    # @param message [String, Regexp, nil] The message to match against the log entries.
-    # @param severity [String, Symbol, Integer, nil] The severity to match against the log entries.
-    # @param attributes [Hash, nil] A hash of attribute names to values to match against the log entries.
-    # @param progname [String, nil] The program name to match against the log entries.
-    # @param level [String, Symbol, Integer, nil] Alias for the `severity` parameter.
-    # @param tags [Hash, nil] Alias for the `attributes` parameter.
-    # @return [Lumberjack::LogEntry, nil] The log entry that most closely matches the filters, or nil if no entry meets minimum criteria.
-    def closest_match(message: nil, severity: nil, attributes: nil, progname: nil, level: nil, tags: nil)
-      return nil if length == 0
-
-      unless level.nil?
-        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#closest_match(level)", "Lumberjack::CaptureDevice#closest_match level parameter has been renamed to severity; it will be removed in version 2.1.")
-      end
-      unless tags.nil?
-        Lumberjack::Utils.deprecated("Lumberjack::CaptureDevice#closest_match(tags)", "Lumberjack::CaptureDevice#closest_match tags parameter has been renamed to attributes; it will be removed in version 2.1.")
-      end
-
-      super(
-        message: message,
-        severity: severity || level,
-        attributes: attributes || tags,
-        progname: progname
-      )
+      !!match(**filters)
     end
 
     # Write the captured log entries to the underlying device.
