@@ -74,7 +74,7 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
 
         message = non_matching_matcher.failure_message
 
-        expect(message).to include("attributes: hash_including(user_id: 123)")
+        expect(message).to include("attributes: hash_including(#{inspect_hash_contents({user_id: 123})})")
       end
     end
 
@@ -146,7 +146,7 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
 
       description = matcher.description
 
-      expect(description).to eq("have logged entry with severity: :info, attributes: hash_including(user_id: 123)")
+      expect(description).to eq("have logged entry with severity: :info, attributes: hash_including(#{inspect_hash_contents({user_id: 123})})")
     end
   end
 
@@ -206,8 +206,8 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
 
       diff = matcher.entry_diff(entry)
 
-      expect(diff).to include("  - attributes: hash_including(user_id: 1)")
-      expect(diff).to include("  + attributes: {\"user\" => {\"id\" => 456, \"role\" => \"guest\"}, \"duration\" => 1.5}")
+      expect(diff).to include("  - attributes: hash_including(#{inspect_hash_contents({user_id: 1})})")
+      expect(diff).to include("  + attributes: #{inspect_hash({"user" => {"id" => 456, "role" => "guest"}, "duration" => 1.5})}")
       expect(diff).to_not include("attributes.user.id")
     end
 
@@ -326,7 +326,7 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
       it "formats a matcher used as the attributes" do
         expected_hash = {severity: :info, attributes: hash_including("user.id" => 123)}
         description = matcher.send(:expectation_description, expected_hash)
-        expect(description).to eq("severity: :info, attributes: hash_including(\"user.id\" => 123)")
+        expect(description).to eq("severity: :info, attributes: hash_including(#{inspect_hash_contents({"user.id" => 123})})")
       end
 
       it "formats matchers used as attribute values" do
