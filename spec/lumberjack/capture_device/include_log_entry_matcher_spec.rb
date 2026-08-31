@@ -52,28 +52,29 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
       end
 
       it "includes closest match information when available" do
-        # Create a logger with no matching entries
-        empty_logger = Lumberjack::Logger.new(:test, severity: :info)
-        logger.device = empty_logger.device
-        logger.info("different message")
-
-        # Mock the closest_match method to return an entry-like object
-        entry = Lumberjack::LogEntry.new(
-          Time.now,
-          Logger::INFO,
-          "similar message",
-          nil,
-          nil,
-          nil
-        )
-        allow(empty_logger).to receive(:closest_match).and_return(entry)
+        other_logger = Lumberjack::Logger.new(:test, severity: :info)
+        other_logger.info("different message")
 
         non_matching_matcher = Lumberjack::CaptureDevice::IncludeLogEntryMatcher.new(severity: :info, message: "non-existent message")
-        non_matching_matcher.matches?(empty_logger)
+        non_matching_matcher.matches?(other_logger)
 
         message = non_matching_matcher.failure_message
 
-        expect(message).to include("Closest match found:")
+        expect(message).to include("Closest match found (- expected, + actual):")
+        expect(message).to include("    severity: INFO")
+        expect(message).to include("  - message: \"non-existent message\"")
+        expect(message).to include("  + message: \"different message\"")
+      end
+
+      it "includes a matcher used as the attributes" do
+        logger.info("test message", user_id: 456)
+
+        non_matching_matcher = Lumberjack::CaptureDevice::IncludeLogEntryMatcher.new(message: "test message", attributes: hash_including(user_id: 123))
+        expect(non_matching_matcher.matches?(logger)).to be false
+
+        message = non_matching_matcher.failure_message
+
+        expect(message).to include("attributes: hash_including(#{inspect_hash_contents({user_id: 123})})")
       end
     end
 
@@ -139,6 +140,141 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
 
       expect(description).to eq("have logged entry with message: \"simple\"")
     end
+
+    it "handles a matcher as the attributes" do
+      matcher = Lumberjack::CaptureDevice::IncludeLogEntryMatcher.new(severity: :info, attributes: hash_including(user_id: 123))
+
+      description = matcher.description
+
+      expect(description).to eq("have logged entry with severity: :info, attributes: hash_including(#{inspect_hash_contents({user_id: 123})})")
+    end
+  end
+
+  describe "#entry_diff" do
+    let(:entry) do
+      Lumberjack::LogEntry.new(
+        Time.now,
+        Logger::INFO,
+        "User logged out",
+        "web",
+        nil,
+        {user: {id: 456, role: "guest"}, duration: 1.5}
+      )
+    end
+
+    it "shows the expected and actual values for fields that do not match" do
+      matcher = described_class.new(severity: :warn, message: "User logged in", progname: "worker")
+
+      expect(matcher.entry_diff(entry)).to eq([
+        "  - severity: WARN",
+        "  + severity: INFO",
+        "  - message: \"User logged in\"",
+        "  + message: \"User logged out\"",
+        "  - progname: \"worker\"",
+        "  + progname: \"web\"",
+        "    attributes.user.id: 456",
+        "    attributes.user.role: \"guest\"",
+        "    attributes.duration: 1.5"
+      ].join("\n"))
+    end
+
+    it "shows a single line with the entry value for fields that match" do
+      matcher = described_class.new(severity: :info, message: /logged/)
+
+      expect(matcher.entry_diff(entry)).to eq([
+        "    severity: INFO",
+        "    message: \"User logged out\"",
+        "    progname: \"web\"",
+        "    attributes.user.id: 456",
+        "    attributes.user.role: \"guest\"",
+        "    attributes.duration: 1.5"
+      ].join("\n"))
+    end
+
+    it "compares nested attributes individually and flags ones the entry does not have" do
+      matcher = described_class.new(attributes: {user: {id: 456, role: "admin"}, request_id: "abc"})
+
+      diff = matcher.entry_diff(entry)
+
+      expect(diff).to include("    attributes.user.id: 456")
+      expect(diff).to include("  - attributes.user.role: \"admin\"\n  + attributes.user.role: \"guest\"")
+      expect(diff).to include("  - attributes.request_id: \"abc\"\n  + attributes.request_id: (not set)")
+    end
+
+    it "compares a matcher against the attributes as a whole" do
+      matcher = described_class.new(attributes: hash_including(user_id: 1))
+
+      diff = matcher.entry_diff(entry)
+
+      expect(diff).to include("  - attributes: hash_including(#{inspect_hash_contents({user_id: 1})})")
+      expect(diff).to include("  + attributes: #{inspect_hash({"user" => {"id" => 456, "role" => "guest"}, "duration" => 1.5})}")
+      expect(diff).to_not include("attributes.user.id")
+    end
+
+    it "uses matcher descriptions for expected values" do
+      matcher = described_class.new(message: a_string_including("logged in"), attributes: {duration: instance_of(Integer)})
+
+      diff = matcher.entry_diff(entry)
+
+      expect(diff).to include("  - message: a string including \"logged in\"")
+      expect(diff).to include("  - attributes.duration: an_instance_of(Integer)\n  + attributes.duration: 1.5")
+    end
+
+    it "omits the progname when neither the expectation nor the entry has one" do
+      entry_without_progname = Lumberjack::LogEntry.new(Time.now, Logger::INFO, "message", nil, nil, nil)
+      matcher = described_class.new(message: "message")
+
+      expect(matcher.entry_diff(entry_without_progname)).to eq([
+        "    severity: INFO",
+        "    message: \"message\""
+      ].join("\n"))
+    end
+
+    context "with an entry formatter on the device" do
+      let(:entry_formatter) do
+        Lumberjack::EntryFormatter.build do |config|
+          config.format_attributes(Exception) { |e| {kind: e.class.name, message: e.message} }
+        end
+      end
+
+      let(:error) do
+        raise "boom"
+      rescue => e
+        e
+      end
+
+      let(:formatted_logger) do
+        logger = Lumberjack::Logger.new(Lumberjack::CaptureDevice.new, formatter: entry_formatter)
+        logger.device.entry_formatter = logger.formatter
+        logger
+      end
+
+      it "formats expected values the same way the device does when matching" do
+        formatted_logger.error("failed", error: error)
+        matcher = described_class.new(attributes: {error: error})
+
+        expect(matcher.matches?(formatted_logger)).to be true
+        expect(matcher.entry_diff(formatted_logger.device.last_entry)).to_not match(/^\s+- /)
+      end
+
+      it "shows the formatted expected value when a formatted attribute does not match" do
+        formatted_logger.error("failed", error: error)
+        other_error = ArgumentError.new("bad argument")
+        matcher = described_class.new(attributes: {error: other_error})
+
+        expect(matcher.matches?(formatted_logger)).to be false
+        diff = matcher.entry_diff(formatted_logger.device.last_entry)
+
+        expect(diff).to include("  - attributes.error.kind: \"ArgumentError\"\n  + attributes.error.kind: \"RuntimeError\"")
+        expect(diff).to include("  - attributes.error.message: \"bad argument\"\n  + attributes.error.message: \"boom\"")
+      end
+    end
+
+    it "indents the diff by the requested amount" do
+      matcher = described_class.new(message: "User logged in")
+
+      expect(matcher.entry_diff(entry, indent: 4)).to include("    - message: \"User logged in\"")
+    end
   end
 
   describe "private methods" do
@@ -185,6 +321,24 @@ RSpec.describe Lumberjack::CaptureDevice::IncludeLogEntryMatcher do
         expected_hash = {severity: :info, attributes: {}}
         description = matcher.send(:expectation_description, expected_hash)
         expect(description).to eq("severity: :info")
+      end
+
+      it "formats a matcher used as the attributes" do
+        expected_hash = {severity: :info, attributes: hash_including("user.id" => 123)}
+        description = matcher.send(:expectation_description, expected_hash)
+        expect(description).to eq("severity: :info, attributes: hash_including(#{inspect_hash_contents({"user.id" => 123})})")
+      end
+
+      it "formats matchers used as attribute values" do
+        expected_hash = {attributes: {user_id: instance_of(Integer)}}
+        description = matcher.send(:expectation_description, expected_hash)
+        expect(description).to eq("attributes: user_id=an_instance_of(Integer)")
+      end
+
+      it "formats matchers used as the message" do
+        expected_hash = {message: a_string_including("test")}
+        description = matcher.send(:expectation_description, expected_hash)
+        expect(description).to eq("message: a string including \"test\"")
       end
 
       it "handles nil values by omitting them" do

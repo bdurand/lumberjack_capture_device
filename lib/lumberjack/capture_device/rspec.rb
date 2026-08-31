@@ -9,15 +9,13 @@ module Lumberjack::CaptureDevice::RSpec
   # This matcher provides better error messages than using the include? method directly.
   #
   # @param expected_hash [Hash] The expected log entry attributes to match.
-  # @option expected_hash [String, Symbol, Integer] :level The expected log level.
-  # @option expected_hash [String, Symbol, Integer] :severity Alias for :level.
+  # @option expected_hash [String, Symbol, Integer] :severity The expected log severity.
   # @option expected_hash [String, Regexp] :message The expected message content.
   # @option expected_hash [Hash] :attributes Expected log entry attributes.
-  # @option expected_hash [Hash] :tags Alias for :attributes.
   # @option expected_hash [String] :progname Expected program name.
   # @return [Lumberjack::CaptureDevice::IncludeLogEntryMatcher] A matcher for the expected log entry.
   # @example
-  #   expect(logs).to include_log_entry(level: :info, message: "User logged in")
+  #   expect(logs).to include_log_entry(severity: :info, message: "User logged in")
   # @example
   #   expect(logs).to include_log_entry(message: /error/i, attributes: {user_id: 123})
   def include_log_entry(expected_hash)
@@ -25,8 +23,9 @@ module Lumberjack::CaptureDevice::RSpec
   end
 
   # Capture log entries from a logger within a block. This method temporarily
-  # replaces the logger's device with a CaptureDevice, sets the log level to debug,
-  # and removes formatters to capture raw log entries for testing.
+  # replaces the logger's device with a CaptureDevice and sets the log level to debug.
+  # The logger's formatters remain active, so captured entries contain the same
+  # formatted values that would have been logged.
   #
   # @param logger [Lumberjack::Logger] The logger to capture entries from.
   # @yield [device] The block to execute while capturing log entries.
@@ -36,7 +35,7 @@ module Lumberjack::CaptureDevice::RSpec
   #   logs = capture_logger(Rails.logger) do
   #     Rails.logger.info("Test message")
   #   end
-  #   expect(logs).to include_log_entry(level: :info, message: "Test message")
+  #   expect(logs).to include_log_entry(severity: :info, message: "Test message")
   def capture_logger(logger, write_to_original: true, &block)
     Lumberjack::CaptureDevice.capture(logger, write_to_original: write_to_original, &block)
   end
@@ -62,9 +61,8 @@ module Lumberjack::CaptureDevice::RSpec
       example.run
 
       if example.exception
-        logger.tag(rspec: {source_location: example.source_location, description: example.metadata[:description]}) do
-          captured_device.write_to_underlying_device
-        end
+        rspec_attributes = {rspec: {location: example.location, description: example.metadata[:description]}}
+        captured_device.write_to_underlying_device(attributes: rspec_attributes)
       end
     end
   end
